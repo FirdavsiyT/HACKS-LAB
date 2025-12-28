@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Labs // Dashboard</title>
+
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Подключение иконок Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Подключение шрифтов (Ubuntu + JetBrains Mono) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- HTB INSPIRED THEME --- */
+        :root {
+            --htb-green: #9fef00;
+            --htb-dark: #13141b;
+            --htb-panel: #1a1c23;
+            --htb-border: #2c2f3b;
+            --htb-text-sub: #9ca3af;
+            --htb-text-main: #ffffff;
+        }
+
+        body {
+            background-color: var(--htb-dark);
+            color: var(--htb-text-main);
+            font-family: 'Ubuntu', sans-serif;
+            overflow-x: hidden;
+            /* Сетка на фоне */
+            background-image: radial-gradient(rgba(44, 47, 59, 0.4) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Навигация (Sidebar) */
+        .nav-link { position: relative; overflow: hidden; }
+        .nav-link.active {
+            background: linear-gradient(90deg, rgba(159, 239, 0, 0.08) 0%, transparent 100%);
+            border-left: 3px solid var(--htb-green);
+            color: white;
+            text-shadow: 0 0 10px rgba(159, 239, 0, 0.4);
+        }
+        .nav-link.active i {
+            color: var(--htb-green);
+            filter: drop-shadow(0 0 5px rgba(159, 239, 0, 0.6));
+        }
+
+        /* Гексагон для аватара */
+        .hexagon { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+
+        /* Стеклянная панель */
+        .glass-panel {
+            background: linear-gradient(145deg, #1e2129, #16181d);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Эффекты скроллбара */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2c2f3b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--htb-green); }
+
+        /* Анимация появления */
+        .fade-in { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Анимация сайдбара */
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Размытие фона для мобильного меню */
+        .backdrop-blur-custom { backdrop-filter: blur(8px); }
+    </style>
+</head>
+<body class="h-screen flex selection:bg-[#9fef00] selection:text-black bg-[#13141b]">
+
+    <!-- Мобильное затемнение (Overlay) -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/90 z-30 hidden md:hidden backdrop-blur-custom transition-opacity opacity-0"></div>
+
+    <!-- БОКОВОЕ МЕНЮ (SIDEBAR) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#111219] border-r border-[#1e2129] flex flex-col flex-shrink-0 sidebar-transition transform -translate-x-full md:translate-x-0 md:static md:inset-auto shadow-2xl md:shadow-none">
+        <!-- Логотип -->
+        <div class="h-20 flex items-center justify-between px-6 border-b border-[#1e2129] bg-[#0d0e14]">
+            <div class="flex items-center gap-3 font-bold text-xl tracking-wide group cursor-pointer">
+                <div class="w-9 h-9 bg-[#9fef00] text-black flex items-center justify-center rounded-sm font-mono text-lg shadow-[0_0_10px_rgba(159,239,0,0.3)] group-hover:shadow-[0_0_20px_rgba(159,239,0,0.5)] transition-shadow">H</div>
+                <span class="tracking-widest">HACK<span class="text-white group-hover:text-[#9fef00] transition-colors">LABS</span></span>
+            </div>
+            <!-- Кнопка закрытия на мобильных -->
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <!-- Ссылки навигации -->
+        <nav class="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
+            <p class="px-3 text-[10px] font-bold text-[#5a6278] uppercase tracking-[0.2em] mb-4">Modules</p>
+
+            <a href="dashboard.html" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Dashboard
+            </a>
+
+            <a href="challenges.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="flag" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Challenges
+            </a>
+
+            <a href="scoreboard.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="trophy" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Rankings
+            </a>
+
+            <p class="px-3 text-[10px] font-bold text-[#5a6278] uppercase tracking-[0.2em] mt-8 mb-4">User</p>
+
+            <a href="profile.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="user" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Profile
+            </a>
+        </nav>
+
+        <!-- Мини-профиль внизу -->
+        <div class="p-5 bg-[#0d0e14] border-t border-[#1e2129]">
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="w-10 h-10 hexagon bg-[#9fef00] flex items-center justify-center p-[2px] shadow-[0_0_10px_rgba(159,239,0,0.2)] group-hover:shadow-[0_0_15px_rgba(159,239,0,0.4)] transition-all">
+                     <div class="w-full h-full hexagon bg-[#13141b] flex items-center justify-center overflow-hidden">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Hacker" alt="User" class="w-full h-full object-cover">
+                     </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-white truncate group-hover:text-[#9fef00] transition-colors">Guest_User</p>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[#9fef00] animate-pulse"></div>
+                        <p class="text-[10px] font-bold text-[#9fef00] tracking-wider uppercase">Pro Hacker</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="flex-1 flex flex-col min-w-0 bg-transparent relative w-full">
+
+        <!-- Шапка (Header) -->
+        <header class="h-20 bg-[#1a1c23]/80 backdrop-blur-md border-b border-[#2c2f3b] flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-all">
+            <div class="flex items-center gap-4">
+                <!-- Кнопка меню (Мобильная) -->
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white focus:outline-none p-1 rounded hover:bg-white/5 transition-colors">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+
+                <!-- Хлебные крошки -->
+                <span class="text-[#9ca3af] text-sm flex items-center gap-2 font-mono">
+                    <i data-lucide="terminal" class="w-4 h-4 text-[#9fef00]"></i>
+                    <span class="hidden sm:inline">root@hacklabs: ~ / </span>
+                    <span class="text-white font-bold">dashboard</span>
+                </span>
+            </div>
+
+            <!-- Статистика пользователя -->
+            <div class="flex items-center gap-3 md:gap-6">
+                 <div class="hidden md:flex flex-col items-end">
+                     <span class="text-[10px] font-bold text-[#5a6278] uppercase tracking-wider">Global Rank</span>
+                     <span class="text-sm font-bold text-white font-mono">#42</span>
+                </div>
+                <div class="h-8 w-[1px] bg-[#2c2f3b] hidden md:block"></div>
+                <div class="flex items-center gap-2 md:gap-3 bg-black/40 rounded-full pl-3 pr-4 py-1.5 border border-[#2c2f3b] hover:border-[#9fef00]/50 transition-colors cursor-default">
+                     <i data-lucide="target" class="w-4 h-4 text-[#9fef00]"></i>
+                     <span class="text-sm font-bold text-white font-mono">1,250 <span class="text-[#5a6278] text-xs font-normal">pts</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Контент страницы Dashboard -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth w-full">
+            <section class="max-w-7xl mx-auto fade-in">
+
+                 <!-- Карточки статистики -->
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+                     <!-- Карточка 1: Флаги -->
+                     <div class="glass-panel rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
+                         <div class="absolute -right-4 -top-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rotate-12 transform scale-150">
+                             <i data-lucide="flag" class="w-32 h-32 text-white"></i>
+                         </div>
+                         <h3 class="text-[#9ca3af] text-xs font-bold uppercase tracking-widest mb-2">Owned Flags</h3>
+                         <div class="text-4xl font-bold text-white mb-2 font-mono tracking-tight">12 <span class="text-sm text-[#5a6278] font-sans font-normal align-middle ml-1">/ 50</span></div>
+                         <div class="w-full bg-[#000] h-2 rounded-full mt-4 border border-[#2c2f3b]">
+                             <div class="bg-gradient-to-r from-[#9fef00] to-[#7dbf00] h-full rounded-full shadow-[0_0_10px_rgba(159,239,0,0.3)]" style="width: 24%"></div>
+                         </div>
+                     </div>
+
+                     <!-- Карточка 2: Продолжить игру -->
+                     <!-- Ссылка ведет на challenges.html -->
+                     <a href="challenges.html" class="glass-panel rounded-xl p-6 flex flex-col justify-center items-center text-center relative overflow-hidden group cursor-pointer hover:border-[#9fef00]/30 transition-colors">
+                         <div class="absolute inset-0 bg-gradient-to-br from-[#9fef00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                         <div class="w-14 h-14 rounded-full bg-[#9fef00]/10 flex items-center justify-center mb-4 text-[#9fef00] group-hover:scale-110 transition-transform duration-300 border border-[#9fef00]/20">
+                             <i data-lucide="play" class="w-6 h-6 ml-1 fill-current"></i>
+                         </div>
+                         <h3 class="text-white font-bold text-lg group-hover:text-[#9fef00] transition-colors">Continue Playing</h3>
+                         <p class="text-[#5a6278] text-xs mt-1">Pick up where you left off</p>
+                     </a>
+                 </div>
+
+                 <!-- Лог активности -->
+                 <h2 class="text-xl font-bold text-white mb-5 flex items-center gap-3">
+                    <div class="w-1 h-6 bg-[#9fef00] shadow-[0_0_10px_rgba(159,239,0,0.5)]"></div>
+                    Activity Log
+                 </h2>
+                 <div class="glass-panel rounded-xl overflow-hidden border border-[#2c2f3b]">
+                     <!-- Заголовок в стиле терминала -->
+                     <div class="p-4 border-b border-[#2c2f3b] bg-[#15171e] flex items-center gap-3">
+                         <div class="flex gap-1.5">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50"></div>
+                         </div>
+                         <span class="text-xs text-[#5a6278] font-mono ml-2">user_activity.log</span>
+                     </div>
+
+                     <!-- Список событий -->
+                     <div>
+                         <div class="flex items-center justify-between p-4 border-b border-[#2c2f3b]/50 hover:bg-white/5 transition-colors group cursor-default">
+                             <div class="flex items-center gap-4">
+                                 <div class="p-2 rounded bg-[#9fef00]/10 text-[#9fef00]">
+                                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                                 </div>
+                                 <div>
+                                     <div class="text-white font-bold text-sm group-hover:text-[#9fef00] transition-colors">Solved "Base64 Madness"</div>
+                                     <div class="text-[#5a6278] text-xs mt-0.5">Crypto Category • 50 pts</div>
+                                 </div>
+                             </div>
+                             <span class="text-[#5a6278] text-xs font-mono bg-black/30 px-2 py-1 rounded border border-white/5">2h ago</span>
+                         </div>
+                         <div class="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group cursor-default">
+                             <div class="flex items-center gap-4">
+                                 <div class="p-2 rounded bg-red-500/10 text-red-500">
+                                    <i data-lucide="x-circle" class="w-5 h-5"></i>
+                                 </div>
+                                 <div>
+                                     <div class="text-white font-bold text-sm group-hover:text-red-400 transition-colors">Failed "Buffer Overflow"</div>
+                                     <div class="text-[#5a6278] text-xs mt-0.5">Pwn Category • 300 pts</div>
+                                 </div>
+                             </div>
+                             <span class="text-[#5a6278] text-xs font-mono bg-black/30 px-2 py-1 rounded border border-white/5">5h ago</span>
+                         </div>
+                     </div>
+                 </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Скрипт для инициализации иконок и работы меню -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
+        // Мобильное меню: переключение
+        let isSidebarOpen = false;
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            isSidebarOpen = !isSidebarOpen;
+
+            if (isSidebarOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+    </script>
+</body>
+</html>

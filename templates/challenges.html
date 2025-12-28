@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTF Labs // Challenges</title>
+
+    <!-- Подключение Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Подключение иконок Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Подключение шрифтов -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- HTB INSPIRED THEME --- */
+        :root {
+            --htb-green: #9fef00;
+            --htb-dark: #13141b;
+            --htb-panel: #1a1c23;
+            --htb-border: #2c2f3b;
+            --htb-text-sub: #9ca3af;
+            --htb-text-main: #ffffff;
+        }
+
+        body {
+            background-color: var(--htb-dark);
+            color: var(--htb-text-main);
+            font-family: 'Ubuntu', sans-serif;
+            overflow-x: hidden;
+            background-image: radial-gradient(rgba(44, 47, 59, 0.4) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Navigation */
+        .nav-link { position: relative; overflow: hidden; }
+        .nav-link.active {
+            background: linear-gradient(90deg, rgba(159, 239, 0, 0.08) 0%, transparent 100%);
+            border-left: 3px solid var(--htb-green);
+            color: white;
+            text-shadow: 0 0 10px rgba(159, 239, 0, 0.4);
+        }
+        .nav-link.active i {
+            color: var(--htb-green);
+            filter: drop-shadow(0 0 5px rgba(159, 239, 0, 0.6));
+        }
+
+        /* Hexagon */
+        .hexagon { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+
+        /* Glass Panel */
+        .glass-panel {
+            background: linear-gradient(145deg, #1e2129, #16181d);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Challenge Card */
+        .challenge-card {
+            background: linear-gradient(180deg, rgba(26, 28, 35, 0.7) 0%, rgba(26, 28, 35, 1) 100%);
+            border: 1px solid #2c2f3b;
+            border-top-color: #3f4454;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .challenge-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(159, 239, 0, 0.3);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(159, 239, 0, 0.1);
+        }
+
+        .challenge-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .challenge-card:hover::before { opacity: 1; }
+
+        /* Utilities */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2c2f3b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--htb-green); }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-card { animation: fadeInUp 0.5s ease-out forwards; opacity: 0; }
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .text-glow { text-shadow: 0 0 10px rgba(159, 239, 0, 0.5); }
+
+        .cat-btn { position: relative; overflow: hidden; outline: none !important; -webkit-tap-highlight-color: transparent; }
+        .cat-btn.active { box-shadow: 0 0 15px rgba(159, 239, 0, 0.3); }
+
+        .backdrop-blur-custom { backdrop-filter: blur(8px); }
+
+        .modal-tab { position: relative; cursor: pointer; transition: color 0.2s; }
+        .modal-tab::after {
+            content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
+            background-color: var(--htb-green); transform: scaleX(0); transition: transform 0.2s;
+        }
+        .modal-tab.active { color: white; }
+        .modal-tab.active::after { transform: scaleX(1); }
+    </style>
+</head>
+<body class="h-screen flex selection:bg-[#9fef00] selection:text-black bg-[#13141b]">
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/90 z-30 hidden md:hidden backdrop-blur-custom transition-opacity opacity-0"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-[#111219] border-r border-[#1e2129] flex flex-col flex-shrink-0 sidebar-transition transform -translate-x-full md:translate-x-0 md:static md:inset-auto shadow-2xl md:shadow-none">
+        <div class="h-20 flex items-center justify-between px-6 border-b border-[#1e2129] bg-[#0d0e14]">
+            <div class="flex items-center gap-3 font-bold text-xl tracking-wide group cursor-pointer">
+                <div class="w-9 h-9 bg-[#9fef00] text-black flex items-center justify-center rounded-sm font-mono text-lg shadow-[0_0_10px_rgba(159,239,0,0.3)] group-hover:shadow-[0_0_20px_rgba(159,239,0,0.5)] transition-shadow">H</div>
+                <span class="tracking-widest">HACK<span class="text-white group-hover:text-[#9fef00] transition-colors">LABS</span></span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white transition-colors">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 py-8 px-4 space-y-2 overflow-y-auto">
+            <p class="px-3 text-[10px] font-bold text-[#5a6278] uppercase tracking-[0.2em] mb-4">Modules</p>
+
+            <a href="dashboard.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="layout-dashboard" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Dashboard
+            </a>
+
+            <a href="challenges.html" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="flag" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Challenges
+            </a>
+
+            <a href="scoreboard.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="trophy" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Rankings
+            </a>
+
+            <p class="px-3 text-[10px] font-bold text-[#5a6278] uppercase tracking-[0.2em] mt-8 mb-4">User</p>
+
+            <a href="profile.html" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-[#1a1c23] hover:text-white transition-all group">
+                <i data-lucide="user" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+                Profile
+            </a>
+        </nav>
+
+        <div class="p-5 bg-[#0d0e14] border-t border-[#1e2129]">
+            <div class="flex items-center gap-3 group cursor-pointer">
+                <div class="w-10 h-10 hexagon bg-[#9fef00] flex items-center justify-center p-[2px] shadow-[0_0_10px_rgba(159,239,0,0.2)] group-hover:shadow-[0_0_15px_rgba(159,239,0,0.4)] transition-all">
+                     <div class="w-full h-full hexagon bg-[#13141b] flex items-center justify-center overflow-hidden">
+                        <img src="https://api.dicebear.com/7.x/bottts/svg?seed=Hacker" alt="User" class="w-full h-full object-cover">
+                     </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-white truncate group-hover:text-[#9fef00] transition-colors">Guest_User</p>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <div class="w-1.5 h-1.5 rounded-full bg-[#9fef00] animate-pulse"></div>
+                        <p class="text-[10px] font-bold text-[#9fef00] tracking-wider uppercase">Pro Hacker</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col min-w-0 bg-transparent relative w-full">
+
+        <!-- Header -->
+        <header class="h-20 bg-[#1a1c23]/80 backdrop-blur-md border-b border-[#2c2f3b] flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 transition-all">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white focus:outline-none p-1 rounded hover:bg-white/5 transition-colors">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+
+                <span class="text-[#9ca3af] text-sm flex items-center gap-2 font-mono">
+                    <i data-lucide="terminal" class="w-4 h-4 text-[#9fef00]"></i>
+                    <span class="hidden sm:inline">root@hacklabs: ~ / </span>
+                    <span class="text-white font-bold">challenges</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-3 md:gap-6">
+                 <div class="hidden md:flex flex-col items-end">
+                     <span class="text-[10px] font-bold text-[#5a6278] uppercase tracking-wider">Global Rank</span>
+                     <span class="text-sm font-bold text-white font-mono">#42</span>
+                </div>
+                <div class="h-8 w-[1px] bg-[#2c2f3b] hidden md:block"></div>
+                <div class="flex items-center gap-2 md:gap-3 bg-black/40 rounded-full pl-3 pr-4 py-1.5 border border-[#2c2f3b] hover:border-[#9fef00]/50 transition-colors cursor-default">
+                     <i data-lucide="target" class="w-4 h-4 text-[#9fef00]"></i>
+                     <span class="text-sm font-bold text-white font-mono">1,250 <span class="text-[#5a6278] text-xs font-normal">pts</span></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth w-full">
+            <section class="max-w-7xl mx-auto fade-in">
+                <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6">
+                    <div>
+                        <h2 class="text-3xl font-bold text-white mb-2 tracking-tight">Challenges</h2>
+                        <p class="text-[#9ca3af] text-sm max-w-md">Select a target to start hacking.</p>
+                    </div>
+                    <!-- Categories -->
+                    <div class="glass-panel p-1.5 rounded-lg flex gap-1 overflow-x-auto max-w-full no-scrollbar shadow-lg">
+                        <button onclick="filterCategory('all')" class="cat-btn active px-5 py-2 rounded-md text-xs font-bold transition-all bg-[#9fef00] text-black shadow-[0_0_15px_rgba(159,239,0,0.3)] whitespace-nowrap focus:outline-none select-none" data-cat="all">ALL</button>
+                        <button onclick="filterCategory('web')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="web">WEB</button>
+                        <button onclick="filterCategory('crypto')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="crypto">CRYPTO</button>
+                        <button onclick="filterCategory('pwn')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="pwn">PWN</button>
+                        <button onclick="filterCategory('reverse')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="reverse">REV</button>
+                    </div>
+                </div>
+
+                <!-- Grid -->
+                <div id="challenges-grid" class="flex flex-col gap-10 pb-12">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- MODAL -->
+    <div id="modal-overlay" class="fixed inset-0 bg-[#000]/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-custom opacity-0 transition-opacity duration-300">
+        <div id="modal-content" class="glass-panel w-full max-w-2xl rounded-xl shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col max-h-[90vh] border border-[#3f4454] overflow-hidden">
+
+            <!-- Header -->
+            <div class="p-6 border-b border-[#2c2f3b] flex justify-between items-start bg-[#1a1c23] relative overflow-hidden flex-shrink-0">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#9fef00] to-transparent opacity-50"></div>
+                <div class="flex gap-5 items-center relative z-10">
+                     <div>
+                         <h2 id="modal-title" class="text-2xl font-bold text-white leading-tight tracking-tight">Title</h2>
+                         <div class="flex flex-wrap items-center gap-3 mt-2 text-xs font-bold uppercase tracking-wider">
+                             <span id="modal-cat" class="px-2 py-0.5 rounded bg-white/5 text-[#9ca3af] border border-white/5">Web</span>
+                             <span id="modal-pts" class="text-[#9fef00] text-glow">100 Pts</span>
+                             <span id="modal-diff" class="text-white">Easy</span>
+                         </div>
+                     </div>
+                </div>
+                <button onclick="closeModal()" class="text-[#5a6278] hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- Tab Navigation (Navbar) -->
+            <div class="flex border-b border-[#2c2f3b] bg-[#16181d] px-6">
+                <div id="tab-btn-overview" onclick="switchModalTab('overview')" class="modal-tab active px-4 py-3 text-sm font-bold text-[#5a6278] uppercase tracking-wider hover:text-white flex items-center">
+                    Overview
+                </div>
+                <div id="tab-btn-solves" onclick="switchModalTab('solves')" class="modal-tab px-4 py-3 text-sm font-bold text-[#5a6278] uppercase tracking-wider hover:text-white flex items-center gap-2">
+                    Solves
+                    <span id="tab-solves-count" class="bg-[#2c2f3b] text-[#9ca3af] px-1.5 py-0.5 rounded text-[10px]">0</span>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-8 overflow-y-auto bg-[#16181d] flex-1 min-h-[300px]">
+
+                <!-- TAB: OVERVIEW -->
+                <div id="tab-overview">
+                    <p id="modal-desc" class="text-[#9ca3af] text-sm leading-relaxed mb-8 font-medium">Description...</p>
+
+                    <!-- Form -->
+                    <div id="modal-form" class="mb-8">
+                        <label class="block text-[10px] font-bold text-[#5a6278] uppercase tracking-widest mb-3">Submit Flag</label>
+                        <div class="flex shadow-lg rounded-lg overflow-hidden transition-shadow focus-within:shadow-[0_0_15px_rgba(159,239,0,0.15)] border border-[#2c2f3b] focus-within:border-[#9fef00]/50">
+                            <div class="bg-[#1a1c23] px-4 flex items-center text-[#5a6278] border-r border-[#2c2f3b]">
+                                <i data-lucide="flag" class="w-4 h-4"></i>
+                            </div>
+                            <input type="text" id="flag-input" placeholder="CTF{...}" class="flex-1 bg-[#13141b] text-white text-sm px-4 py-3.5 focus:outline-none font-mono transition-colors min-w-0 placeholder-[#2c2f3b]">
+                            <button onclick="submitFlag()" class="bg-[#9fef00] hover:bg-[#8cd600] text-[#13141b] font-bold px-8 text-sm uppercase tracking-wider transition-all hover:px-10 border-l border-[#2c2f3b]">
+                                Submit
+                            </button>
+                        </div>
+                        <p id="feedback-msg" class="text-xs mt-3 h-4 font-mono font-bold pl-1"></p>
+                    </div>
+
+                    <!-- Solved State -->
+                    <div id="modal-solved" class="hidden text-center py-6 bg-[#9fef00]/5 rounded-lg border border-[#9fef00]/20 animate-pulse mb-8">
+                        <span class="text-[#9fef00] font-bold flex items-center justify-center gap-2 text-lg">
+                            <i data-lucide="check-circle" class="w-6 h-6"></i> System Compromised
+                        </span>
+                    </div>
+                </div>
+
+                <!-- TAB: SOLVES -->
+                <div id="tab-solves" class="hidden">
+                     <div id="solves-list" class="space-y-2"></div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <div class="h-6 border-t border-[#2c2f3b] bg-[#1a1c23] rounded-b-xl relative overflow-hidden flex-shrink-0">
+                <div class="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#9fef00] to-transparent opacity-50"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS LOGIC -->
+    <script>
+        const challenges = [
+            {
+                id: 1,
+                title: 'SQL Injection Starter',
+                category: 'web',
+                points: 100,
+                difficulty: 'Easy',
+                solved: false,
+                desc: 'На сайте обнаружена уязвимость ввода. Сможете ли вы получить доступ к базе данных администратора?',
+                flag: 'CTF{sql_master}',
+                solves: [
+                    { user: 'mr_robot', date: '2023-10-24 14:30' },
+                    { user: 'zero_cool', date: '2023-10-24 15:12' },
+                    { user: 'acid_burn', date: '2023-10-25 09:45' }
+                ]
+            },
+            {
+                id: 2,
+                title: 'Base64 Madness',
+                category: 'crypto',
+                points: 50,
+                difficulty: 'Easy',
+                solved: true,
+                desc: 'Мы перехватили странное сообщение. Расшифруйте его.',
+                flag: 'CTF{hello_world}',
+                solves: [
+                    { user: 'Guest_User', date: '2023-10-26 11:20' },
+                    { user: 'neo', date: '2023-10-26 12:05' }
+                ]
+            },
+            {
+                id: 3,
+                title: 'Buffer Overflow',
+                category: 'pwn',
+                points: 300,
+                difficulty: 'Medium',
+                solved: false,
+                desc: 'Бинарный файл уязвим. Перепишите адрес возврата.',
+                flag: 'CTF{segfault_king}',
+                solves: [
+                    { user: 'BinaryBear', date: '2023-10-28 23:59' }
+                ]
+            },
+            {
+                id: 4,
+                title: 'Hidden Agent',
+                category: 'web',
+                points: 200,
+                difficulty: 'Medium',
+                solved: false,
+                desc: 'Сайт доступен только для определенного User-Agent.',
+                flag: 'CTF{user_agent_spoof}',
+                solves: []
+            },
+            {
+                id: 5,
+                title: 'Reverse Me',
+                category: 'reverse',
+                points: 500,
+                difficulty: 'Hard',
+                solved: false,
+                desc: 'Разберите этот файл и найдите секретный ключ.',
+                flag: 'CTF{assembly_god}',
+                solves: [
+                     { user: 'Reverser', date: '2023-11-01 10:00' },
+                     { user: 'mr_robot', date: '2023-11-01 13:42' }
+                ]
+            },
+             {
+                id: 6,
+                title: 'Protocol Z',
+                category: 'web',
+                points: 150,
+                difficulty: 'Medium',
+                solved: false,
+                desc: 'Анализируйте сетевой трафик и найдите аномалии.',
+                flag: 'CTF{packets}',
+                solves: [
+                    { user: 'NetRunner', date: '2023-11-02 16:20' }
+                ]
+            },
+        ];
+
+        let currentCat = 'all';
+        let activeId = null;
+        let isSidebarOpen = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderChallenges();
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            isSidebarOpen = !isSidebarOpen;
+
+            if (isSidebarOpen) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        function renderChallenges() {
+            const grid = document.getElementById('challenges-grid');
+            grid.innerHTML = '';
+
+            const list = currentCat === 'all' ? challenges : challenges.filter(c => c.category === currentCat);
+            const categories = [...new Set(list.map(c => c.category))];
+
+            if (categories.length === 0) {
+                grid.innerHTML = '<div class="text-center text-[#5a6278] py-12">No challenges found in this category.</div>';
+                return;
+            }
+
+            categories.forEach(cat => {
+                const catChallenges = list.filter(c => c.category === cat);
+
+                const sectionHTML = `
+                    <div class="fade-in">
+                        <div class="flex items-center gap-3 mb-5 border-b border-[#2c2f3b] pb-2">
+                            <h3 class="text-lg font-bold text-white uppercase tracking-wider font-mono">${cat}</h3>
+                            <span class="text-[#5a6278] text-xs font-mono ml-auto bg-[#1a1c23] px-2 py-1 rounded border border-[#2c2f3b]">${catChallenges.length} TASKS</span>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+                            ${catChallenges.map((c, index) => createChallengeCard(c, index)).join('')}
+                        </div>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', sectionHTML);
+            });
+            lucide.createIcons();
+        }
+
+        function createChallengeCard(c, index) {
+            const diffColor = c.difficulty === 'Easy' ? 'text-green-500' : c.difficulty === 'Medium' ? 'text-yellow-500' : 'text-red-500';
+
+            return `
+                <div onclick="openModal(${c.id})" style="animation-delay: ${index * 0.05}s" class="challenge-card animate-card rounded-xl p-6 cursor-pointer group flex flex-col h-full bg-[#1a1c23] border border-[#2c2f3b] hover:border-[#9fef00]/30 transition-all">
+                     ${c.solved ? '<div class="absolute right-0 top-0 w-0 h-0 border-t-[40px] border-l-[40px] border-t-[#9fef00] border-l-transparent z-10 shadow-lg"><i data-lucide="check" class="absolute -top-[36px] -left-[16px] w-3.5 h-3.5 text-black font-bold"></i></div>' : ''}
+
+                     <div class="flex items-start justify-end mb-4">
+                         <div class="text-right">
+                             <div class="text-xl font-bold text-white font-mono tracking-tight">${c.points}</div>
+                             <div class="text-[10px] text-[#5a6278] uppercase font-bold tracking-wider">PTS</div>
+                         </div>
+                     </div>
+
+                     <h4 class="text-white font-bold text-lg mb-6 truncate group-hover:text-[#9fef00] transition-colors tracking-tight">${c.title}</h4>
+
+                     <div class="mt-auto">
+                        <div class="w-full bg-[#13141b] h-1.5 rounded-full mb-3 overflow-hidden border border-white/5">
+                            <div class="h-full rounded-full ${c.solved ? 'bg-[#9fef00] w-full shadow-[0_0_10px_#9fef00]' : 'bg-[#2c2f3b] w-0'} transition-all duration-700 ease-out"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs font-medium">
+                            <span class="${diffColor} px-2 py-0.5 rounded bg-white/5 border border-white/5">${c.difficulty}</span>
+                            <span class="${c.solved ? 'text-[#9fef00]' : 'text-[#5a6278]'} uppercase text-[10px] font-bold tracking-wider">${c.solved ? 'PWNED' : 'ACTIVE'}</span>
+                        </div>
+                     </div>
+                </div>
+            `;
+        }
+
+        function filterCategory(cat) {
+            currentCat = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if(btn.dataset.cat === cat) {
+                    btn.className = 'cat-btn active px-5 py-2 rounded-md text-xs font-bold transition-all bg-[#9fef00] text-black shadow-[0_0_15px_rgba(159,239,0,0.3)] whitespace-nowrap focus:outline-none select-none';
+                } else {
+                    btn.className = 'cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none';
+                }
+            });
+            renderChallenges();
+        }
+
+        function openModal(id) {
+            const c = challenges.find(i => i.id === id);
+            activeId = id;
+
+            document.getElementById('modal-title').innerText = c.title;
+            document.getElementById('modal-desc').innerText = c.desc;
+            document.getElementById('modal-pts').innerText = c.points + ' Pts';
+            document.getElementById('modal-cat').innerText = c.category;
+            document.getElementById('modal-diff').innerText = c.difficulty;
+
+            const input = document.getElementById('flag-input');
+            const feedback = document.getElementById('feedback-msg');
+            const formDiv = document.getElementById('modal-form');
+            const solvedDiv = document.getElementById('modal-solved');
+
+            input.value = '';
+            feedback.innerText = '';
+            input.classList.remove('border-red-500', 'text-red-500');
+
+            if(c.solved) {
+                formDiv.classList.add('hidden');
+                solvedDiv.classList.remove('hidden');
+            } else {
+                formDiv.classList.remove('hidden');
+                solvedDiv.classList.add('hidden');
+            }
+
+            document.getElementById('tab-solves-count').innerText = c.solves.length;
+
+            const solvesList = document.getElementById('solves-list');
+            solvesList.innerHTML = '';
+
+            if (c.solves.length === 0) {
+                solvesList.innerHTML = '<div class="text-center text-[#5a6278] text-xs py-10 italic">No solves yet. Be the first!</div>';
+            } else {
+                c.solves.forEach(solve => {
+                    const solveItem = `
+                        <div class="flex justify-between items-center bg-[#13141b] p-3 rounded border border-[#2c2f3b] hover:border-[#5a6278]/50 transition-colors group">
+                            <div class="flex items-center gap-3">
+                                 <div class="w-8 h-8 rounded-full bg-[#2c2f3b] flex items-center justify-center overflow-hidden border border-[#2c2f3b]">
+                                     <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${solve.user}" class="w-full h-full object-cover">
+                                 </div>
+                                 <span class="text-sm font-bold text-white group-hover:text-[#9fef00] transition-colors">${solve.user}</span>
+                            </div>
+                            <span class="text-[10px] text-[#5a6278] font-mono">${solve.date}</span>
+                        </div>
+                    `;
+                    solvesList.insertAdjacentHTML('beforeend', solveItem);
+                });
+            }
+
+            switchModalTab('overview');
+
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            overlay.classList.remove('hidden');
+            setTimeout(() => {
+                overlay.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function switchModalTab(tabName) {
+            document.getElementById('tab-overview').classList.add('hidden');
+            document.getElementById('tab-solves').classList.add('hidden');
+
+            document.getElementById('tab-btn-overview').classList.remove('active', 'text-white');
+            document.getElementById('tab-btn-solves').classList.remove('active', 'text-white');
+            document.getElementById('tab-btn-overview').classList.add('text-[#5a6278]');
+            document.getElementById('tab-btn-solves').classList.add('text-[#5a6278]');
+
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.classList.add('active', 'text-white');
+            activeBtn.classList.remove('text-[#5a6278]');
+        }
+
+        function closeModal() {
+            const overlay = document.getElementById('modal-overlay');
+            const content = document.getElementById('modal-content');
+            overlay.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => overlay.classList.add('hidden'), 300);
+        }
+
+        function submitFlag() {
+            const input = document.getElementById('flag-input');
+            const feedback = document.getElementById('feedback-msg');
+            const c = challenges.find(i => i.id === activeId);
+
+            if(input.value === c.flag || input.value === 'CTF{admin}') {
+                feedback.className = 'text-xs mt-3 h-4 font-mono font-bold pl-1 text-[#9fef00]';
+                feedback.innerHTML = '<i class="inline w-3 h-3 mr-1" data-lucide="check"></i> ACCESS GRANTED';
+                c.solved = true;
+                lucide.createIcons();
+                setTimeout(() => {
+                    closeModal();
+                    renderChallenges();
+                }, 1000);
+            } else {
+                feedback.className = 'text-xs mt-3 h-4 font-mono font-bold pl-1 text-red-500';
+                feedback.innerText = 'ACCESS DENIED';
+                input.classList.add('border-red-500', 'text-red-500');
+                setTimeout(() => input.classList.remove('border-red-500', 'text-red-500'), 1000);
+            }
+        }
+
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'modal-overlay') closeModal();
+        });
+    </script>
+</body>
+</html>
