@@ -24,7 +24,7 @@ from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('admin/', admin.site.urls),
+    # Вторая строка path('admin/', admin.site.urls) удалена
 
     # Аутентификация (используем стандартные или админские)
     path('accounts/login/', auth_views.LoginView.as_view(template_name='admin/login.html'), name='login'),

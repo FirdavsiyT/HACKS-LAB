@@ -42,7 +42,7 @@ def challenges_view(request):
         challenges_data.append({
             'id': c.id,
             'title': c.title,
-            'category': c.category.slug,
+            'category': c.category,
             'points': c.points,
             'difficulty': c.difficulty,
             'solved': c.id in user_solves_ids,

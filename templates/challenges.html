@@ -65,15 +65,16 @@
     </div>
 </div>
 
-<!-- БЕЗОПАСНАЯ ПЕРЕДАЧА JSON -->
+<!-- Безопасная передача данных из Django в JS -->
 {{ challenges_data|json_script:"challenges-data" }}
+{{ categories_json|json_script:"categories-data" }}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Читаем данные из скрипта (безопасно)
     const challenges = JSON.parse(document.getElementById('challenges-data').textContent);
+    const categoriesMeta = JSON.parse(document.getElementById('categories-data').textContent);
     let currentCat = 'all';
     let activeId = null;
 
@@ -83,19 +84,24 @@
         const grid = document.getElementById('challenges-grid');
         grid.innerHTML = '';
         const list = currentCat === 'all' ? challenges : challenges.filter(c => c.category === currentCat);
-        const categories = [...new Set(list.map(c => c.category))];
+        const categoriesInList = [...new Set(list.map(c => c.category))];
 
-        if (categories.length === 0) {
+        if (categoriesInList.length === 0) {
             grid.innerHTML = '<div class="text-center text-[#5a6278] py-12">No challenges found.</div>';
             return;
         }
 
-        categories.forEach(cat => {
-            const catChallenges = list.filter(c => c.category === cat);
+        categoriesInList.forEach(catSlug => {
+            const catChallenges = list.filter(c => c.category === catSlug);
+            const catInfo = categoriesMeta[catSlug] || { name: catSlug, icon: 'folder' };
+
             const sectionHTML = `
-                <div class="fade-in">
+                <div class="fade-in mb-10">
                     <div class="flex items-center gap-3 mb-5 border-b border-[#2c2f3b] pb-2">
-                        <h3 class="text-lg font-bold text-white uppercase tracking-wider font-mono">${cat.toUpperCase()}</h3>
+                        <div class="p-1.5 rounded bg-[#9fef00]/10 text-[#9fef00] border border-[#9fef00]/20">
+                            <i data-lucide="${catInfo.icon}" class="w-4 h-4"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white uppercase tracking-wider font-mono">${catInfo.name}</h3>
                         <span class="text-[#5a6278] text-xs font-mono ml-auto bg-[#1a1c23] px-2 py-1 rounded border border-[#2c2f3b]">${catChallenges.length} TASKS</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
@@ -137,9 +143,12 @@
         document.getElementById('modal-title').innerText = c.title;
         document.getElementById('modal-desc').innerText = c.desc;
         document.getElementById('modal-pts').innerText = c.points + ' Pts';
-        document.getElementById('modal-cat').innerText = c.category;
+
+        // Получаем красивое имя категории из метаданных
+        const catName = categoriesMeta[c.category] ? categoriesMeta[c.category].name : c.category;
+        document.getElementById('modal-cat').innerText = catName.toUpperCase();
         document.getElementById('modal-diff').innerText = c.difficulty;
-        
+
         const formDiv = document.getElementById('modal-form');
         const solvedDiv = document.getElementById('modal-solved');
         const input = document.getElementById('flag-input');
@@ -166,7 +175,7 @@
                 solvesList.insertAdjacentHTML('beforeend', `<div class="flex justify-between items-center bg-[#13141b] p-3 rounded border border-[#2c2f3b] hover:border-[#5a6278]/50 transition-colors group"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-[#2c2f3b] flex items-center justify-center overflow-hidden border border-[#2c2f3b]"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${solve.user}" class="w-full h-full object-cover"></div><span class="text-sm font-bold text-white group-hover:text-[#9fef00] transition-colors">${solve.user}</span></div><span class="text-[10px] text-[#5a6278] font-mono">${solve.date}</span></div>`);
             });
         }
-        
+
         switchModalTab('overview');
         const overlay = document.getElementById('modal-overlay');
         const content = document.getElementById('modal-content');
@@ -198,7 +207,7 @@
     async function submitFlag() {
         const input = document.getElementById('flag-input');
         const feedback = document.getElementById('feedback-msg');
-        
+
         const response = await fetch("{% url 'submit_flag' %}", {
             method: 'POST',
             headers: {

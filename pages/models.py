@@ -4,13 +4,9 @@ from django.conf import settings
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
-    slug = models.SlugField(unique=True)
-    icon = models.CharField(max_length=50, default="flag", help_text="Имя иконки Lucide (например: globe, lock, cpu)")
-    order = models.IntegerField(default=0)
 
     class Meta:
         verbose_name_plural = "Categories"
-        ordering = ['order']
 
     def __str__(self):
         return self.name
