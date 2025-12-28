@@ -6,24 +6,26 @@ from django.db.models import Sum
 from .models import User
 
 
-@login_required
+@login_required(login_url='/admin/login/')
 def profile(request):
     if request.method == 'POST':
-        # (Оставляем ту же логику обработки форм, что обсуждали ранее, или упрощаем для старта)
+        # Здесь можно добавить логику обработки формы смены пароля/email
         pass
 
     score = request.user.score
-    flags_count = request.user.solve_set.count()
+    # Исправлено: используем 'solves' вместо 'solve_set'
+    flags_count = request.user.solves.count()
 
     # Расчет ранга
     # Считаем, сколько юзеров имеют больше очков
-    users_above = User.objects.annotate(tp=Sum('solve__challenge__points')).filter(tp__gt=score).count()
+    # Исправлено: используем 'solves__challenge__points'
+    users_above = User.objects.annotate(tp=Sum('solves__challenge__points')).filter(tp__gt=score).count()
     rank = users_above + 1
 
     context = {
         'score': score,
         'flags_count': flags_count,
         'rank': rank,
-        'accuracy': '100%'  # Заглушка
+        'accuracy': '100%'
     }
     return render(request, 'users/profile.html', context)

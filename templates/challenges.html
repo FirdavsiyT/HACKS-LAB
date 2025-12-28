@@ -12,7 +12,8 @@
         <div class="glass-panel p-1.5 rounded-lg flex gap-1 overflow-x-auto max-w-full no-scrollbar shadow-lg">
             <button onclick="filterCategory('all')" class="cat-btn active px-5 py-2 rounded-md text-xs font-bold transition-all bg-[#9fef00] text-black shadow-[0_0_15px_rgba(159,239,0,0.3)] whitespace-nowrap focus:outline-none select-none" data-cat="all">ALL</button>
             {% for cat in categories %}
-            <button onclick="filterCategory('{{ cat.slug }}')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="{{ cat.slug }}">{{ cat.name|upper }}</button>
+            <!-- Используем cat.name вместо cat.slug -->
+            <button onclick="filterCategory('{{ cat.name }}')" class="cat-btn px-5 py-2 rounded-md text-xs font-bold transition-all text-[#9ca3af] hover:text-white hover:bg-white/10 whitespace-nowrap focus:outline-none select-none" data-cat="{{ cat.name }}">{{ cat.name|upper }}</button>
             {% endfor %}
         </div>
     </div>
@@ -84,6 +85,7 @@
         const grid = document.getElementById('challenges-grid');
         grid.innerHTML = '';
         const list = currentCat === 'all' ? challenges : challenges.filter(c => c.category === currentCat);
+        // Используем имя категории для группировки
         const categoriesInList = [...new Set(list.map(c => c.category))];
 
         if (categoriesInList.length === 0) {
@@ -91,9 +93,10 @@
             return;
         }
 
-        categoriesInList.forEach(catSlug => {
-            const catChallenges = list.filter(c => c.category === catSlug);
-            const catInfo = categoriesMeta[catSlug] || { name: catSlug, icon: 'folder' };
+        categoriesInList.forEach(catName => {
+            const catChallenges = list.filter(c => c.category === catName);
+            // Ищем метаданные по имени
+            const catInfo = categoriesMeta[catName] || { name: catName, icon: 'folder' };
 
             const sectionHTML = `
                 <div class="fade-in mb-10">
@@ -101,7 +104,7 @@
                         <div class="p-1.5 rounded bg-[#9fef00]/10 text-[#9fef00] border border-[#9fef00]/20">
                             <i data-lucide="${catInfo.icon}" class="w-4 h-4"></i>
                         </div>
-                        <h3 class="text-lg font-bold text-white uppercase tracking-wider font-mono">${catInfo.name}</h3>
+                        <h3 class="text-lg font-bold text-white uppercase tracking-wider font-mono">${catInfo.name.toUpperCase()}</h3>
                         <span class="text-[#5a6278] text-xs font-mono ml-auto bg-[#1a1c23] px-2 py-1 rounded border border-[#2c2f3b]">${catChallenges.length} TASKS</span>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
@@ -144,7 +147,7 @@
         document.getElementById('modal-desc').innerText = c.desc;
         document.getElementById('modal-pts').innerText = c.points + ' Pts';
 
-        // Получаем красивое имя категории из метаданных
+        // Получаем красивое имя категории из метаданных (по имени)
         const catName = categoriesMeta[c.category] ? categoriesMeta[c.category].name : c.category;
         document.getElementById('modal-cat').innerText = catName.toUpperCase();
         document.getElementById('modal-diff').innerText = c.difficulty;

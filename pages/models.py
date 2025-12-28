@@ -4,6 +4,7 @@ from django.conf import settings
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
+    # slug, icon и order убраны, как в последней миграции
 
     class Meta:
         verbose_name_plural = "Categories"
@@ -34,7 +35,7 @@ class Challenge(models.Model):
 
 
 class Solve(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solves')
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE, related_name='solves')
     date = models.DateTimeField(auto_now_add=True)
 

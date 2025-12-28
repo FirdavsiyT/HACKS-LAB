@@ -28,7 +28,27 @@ def dashboard(request):
 @login_required(login_url='/admin/login/')
 def challenges_view(request):
     challenges = Challenge.objects.select_related('category').all()
-    categories = Category.objects.all()
+    categories_qs = Category.objects.all()
+
+    # Формируем метаданные категорий для JS (имя и иконка)
+    # Так как иконок в БД нет, подбираем их тут или ставим дефолт
+    categories_data = {}
+    for cat in categories_qs:
+        icon = 'flag'  # Дефолтная иконка
+        name_lower = cat.name.lower()
+        if 'web' in name_lower:
+            icon = 'globe'
+        elif 'crypto' in name_lower:
+            icon = 'lock'
+        elif 'pwn' in name_lower or 'binary' in name_lower:
+            icon = 'cpu'
+        elif 'reverse' in name_lower:
+            icon = 'code'
+
+        categories_data[cat.name] = {
+            'name': cat.name,
+            'icon': icon
+        }
 
     user_solves_ids = set(Solve.objects.filter(user=request.user).values_list('challenge_id', flat=True))
 
@@ -42,7 +62,8 @@ def challenges_view(request):
         challenges_data.append({
             'id': c.id,
             'title': c.title,
-            'category': c.category,
+            # Используем имя категории вместо slug
+            'category': c.category.name,
             'points': c.points,
             'difficulty': c.difficulty,
             'solved': c.id in user_solves_ids,
@@ -52,17 +73,20 @@ def challenges_view(request):
         })
 
     context = {
-        'categories': categories,
-        'challenges_data': challenges_data  # Передаем данные для json_script
+        'categories': categories_qs,
+        # Обязательно передаем JSON с категориями, чтобы не было ошибки в JS
+        'categories_json': json.dumps(categories_data),
+        'challenges_data': challenges_data
     }
     return render(request, 'challenges.html', context)
 
 
 @login_required(login_url='/admin/login/')
 def scoreboard(request):
+    # Исправлено: используем 'solves' вместо 'solve', так как добавили related_name='solves'
     users = User.objects.annotate(
-        total_points=Sum('solve__challenge__points'),
-        flags_count=Count('solve')
+        total_points=Sum('solves__challenge__points'),
+        flags_count=Count('solves')
     ).order_by('-total_points', '-flags_count')[:50]
 
     leaderboard_data = []
