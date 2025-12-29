@@ -9,6 +9,9 @@ class User(AbstractUser):
         default="https://api.dicebear.com/7.x/bottts/svg?seed=default",
         verbose_name="Аватар"
     )
+    # Эти поля используются в admin.py, их нужно добавить в модель
+    bio = models.TextField(verbose_name="О себе", blank=True, null=True)
+    country = models.CharField(max_length=50, verbose_name="Страна", blank=True, null=True)
 
     # Исправление конфликтов reverse accessors
     groups = models.ManyToManyField(
@@ -30,9 +33,9 @@ class User(AbstractUser):
 
     @property
     def score(self):
-        # Сумма очков за все решенные задачи
-        # Используем related_name='solve_set' (стандартное) или 'solves' если определим в Solve
-        total = self.solve_set.aggregate(total=Sum('challenge__points'))['total']
+        # ИСПРАВЛЕНО: Используем 'solves' (как указано в related_name модели Solve в pages/models.py)
+        # вместо 'solve_set' (стандартное Django имя, которое было переопределено)
+        total = self.solves.aggregate(total=Sum('challenge__points'))['total']
         return total if total is not None else 0
 
     class Meta:
