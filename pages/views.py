@@ -3,13 +3,15 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
 from .models import Challenge, Category, Solve, Attempt
 from users.models import User
 import json
 from collections import defaultdict
+from django.utils import timezone
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def dashboard(request):
     user_solves = Solve.objects.filter(user=request.user)
     owned_flags = user_solves.count()
@@ -72,7 +74,7 @@ def dashboard(request):
     return render(request, 'dashboard.html', context)
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def challenges_view(request):
     challenges = Challenge.objects.select_related('category').all()
     categories_qs = Category.objects.all()
@@ -95,7 +97,6 @@ def challenges_view(request):
 
     challenges_data = []
     for c in challenges:
-        # ИСПРАВЛЕНО: Добавляем avatar_url в список решивших
         solves_list = [{
             'user': s.user.username,
             'avatar': s.user.avatar_url,
@@ -132,15 +133,24 @@ def challenges_view(request):
     return render(request, 'challenges.html', context)
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def scoreboard(request):
-    users = User.objects.annotate(
+    # 1. Получаем ТОП-10 пользователей для графика
+    top_users_qs = User.objects.annotate(
+        total_points=Sum('solves__challenge__points'),
+        flags_count=Count('solves')
+    ).order_by('-total_points', '-flags_count')[:10]
+
+    top_users_list = list(top_users_qs)
+
+    # 2. Получаем ПОЛНЫЙ список для таблицы (топ-50)
+    all_users_qs = User.objects.annotate(
         total_points=Sum('solves__challenge__points'),
         flags_count=Count('solves')
     ).order_by('-total_points', '-flags_count')[:50]
 
     leaderboard_data = []
-    for index, u in enumerate(users, 1):
+    for index, u in enumerate(all_users_qs, 1):
         leaderboard_data.append({
             'rank': index,
             'user': u.username,
@@ -150,8 +160,56 @@ def scoreboard(request):
             'avatar': u.avatar_url
         })
 
+    # 3. Подготовка данных для графика (Relative Time vs Score)
+    graph_data = {
+        'datasets': []
+    }
+
+    colors = [
+        '#9fef00', '#00d2ff', '#ff0055', '#ffe600', '#aa00ff',
+        '#ff6600', '#00ffaa', '#ff00aa', '#0066ff', '#ccff00'
+    ]
+
+    for i, user in enumerate(top_users_list):
+        solves = Solve.objects.filter(user=user).select_related('challenge').order_by('date')
+
+        if not solves.exists():
+            continue
+
+        # Определяем время старта (первое решение)
+        start_time = solves[0].date
+
+        # Первая точка: 0 часов, 0 очков
+        data_points = [{'x': 0, 'y': 0}]
+        current_score = 0
+
+        for solve in solves:
+            current_score += solve.challenge.points
+
+            # Вычисляем, сколько часов прошло с момента старта
+            time_delta = solve.date - start_time
+            hours_elapsed = round(time_delta.total_seconds() / 3600, 2)  # Часы с сотыми долями
+
+            data_points.append({'x': hours_elapsed, 'y': current_score})
+
+        graph_data['datasets'].append({
+            'label': user.username,
+            'data': data_points,
+            'borderColor': colors[i % len(colors)],
+            'backgroundColor': 'transparent',
+            'borderWidth': 2,
+            'tension': 0.2,  # Легкое сглаживание
+            'pointRadius': 3,
+            'pointHoverRadius': 6,
+            'showLine': True
+        })
+
+    # Примечание: Для Chart.js при использовании объектов {x, y} метки labels не обязательны,
+    # график автоматически построит линейную ось X.
+
     context = {
-        'leaderboard_data': leaderboard_data
+        'leaderboard_data': leaderboard_data,
+        'graph_data_json': json.dumps(graph_data)
     }
     return render(request, 'scoreboard.html', context)
 

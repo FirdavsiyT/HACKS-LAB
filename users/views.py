@@ -22,7 +22,7 @@ def register(request):
     else:
         form = CustomUserCreationForm()
 
-    return render(request, 'registration/register.html', {'form': form})
+    return render(request, 'users/register.html', {'form': form})
 
 
 @login_required
@@ -37,7 +37,6 @@ def avatar_setup(request):
                 request.user.save()
                 messages.success(request, 'Avatar setup complete!')
         else:
-            # Если нажали Skip, просто оставляем дефолтную аватарку
             messages.info(request, 'Avatar setup skipped. Default avatar applied.')
 
         return redirect('dashboard')
@@ -45,7 +44,7 @@ def avatar_setup(request):
     return render(request, 'users/avatar_setup.html')
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def profile(request):
     if request.method == 'POST':
         action = request.POST.get('action')

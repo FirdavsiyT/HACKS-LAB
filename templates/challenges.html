@@ -39,12 +39,13 @@
             <button onclick="closeModal()" class="text-[#5a6278] hover:text-white transition-colors p-2 hover:bg-white/5 rounded-lg"><i data-lucide="x" class="w-6 h-6"></i></button>
         </div>
 
-        <div class="flex border-b border-[#2c2f3b] bg-[#16181d] px-6">
+        <div class="flex border-b border-[#2c2f3b] bg-[#16181d] px-6 flex-shrink-0">
             <div id="tab-btn-overview" onclick="switchModalTab('overview')" class="modal-tab active px-4 py-3 text-sm font-bold text-[#5a6278] uppercase tracking-wider hover:text-white flex items-center">Overview</div>
             <div id="tab-btn-solves" onclick="switchModalTab('solves')" class="modal-tab px-4 py-3 text-sm font-bold text-[#5a6278] uppercase tracking-wider hover:text-white flex items-center gap-2">Solves <span id="tab-solves-count" class="bg-[#2c2f3b] text-[#9ca3af] px-1.5 py-0.5 rounded text-[10px]">0</span></div>
         </div>
 
-        <div class="p-8 overflow-y-auto bg-[#16181d] flex-1 min-h-[300px]">
+        <!-- ИСПРАВЛЕНО: Фиксированная высота h-[400px] -->
+        <div class="p-8 overflow-y-auto bg-[#16181d] h-[400px]">
             <div id="tab-overview">
                 <p id="modal-desc" class="text-[#9ca3af] text-sm leading-relaxed mb-8 font-medium"></p>
                 <div id="modal-form" class="mb-8">
@@ -174,7 +175,6 @@
             progressColor = 'bg-[#2c2f3b]';
         }
 
-        // Логика отображения попыток
         let attemptsStr = '';
         if (!c.solved && !c.failed) {
             if (c.max_attempts > 0) {

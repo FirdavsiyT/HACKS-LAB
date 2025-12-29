@@ -1,87 +1,170 @@
 {% extends 'base.html' %}
 
-{% block header_title %}rankings{% endblock %}
+{% block header_title %}scoreboard{% endblock %}
 
 {% block content %}
-<section class="max-w-6xl mx-auto fade-in">
-    <h2 class="text-xl font-bold text-white mb-5 flex items-center gap-3">
-        <div class="w-1 h-6 bg-[#9fef00] shadow-[0_0_10px_rgba(159,239,0,0.5)]"></div>
-        Global Rankings
-    </h2>
+<section class="max-w-5xl mx-auto fade-in">
 
-    <div class="glass-panel rounded-xl overflow-hidden border border-[#2c2f3b] shadow-2xl">
-        <div class="p-4 border-b border-[#2c2f3b] bg-[#15171e] flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="flex gap-1.5">
-                    <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50"></div>
-                    <div class="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
-                    <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50"></div>
-                </div>
-                <span class="text-xs text-[#5a6278] font-mono ml-2">leaderboard.sys</span>
-            </div>
-            <div class="text-[10px] text-[#5a6278] uppercase font-bold tracking-widest">Season 5</div>
+    <!-- График активности -->
+    <div class="glass-panel p-6 rounded-xl border border-[#2c2f3b] mb-10">
+        <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
+            <i data-lucide="timer" class="w-5 h-5 text-[#9fef00]"></i> Score Progression (Relative Time)
+        </h3>
+        <div class="relative h-[300px] w-full">
+            <canvas id="scoreChart"></canvas>
         </div>
+    </div>
 
-        <div class="overflow-x-auto bg-[#13141b]/50">
-            <table class="w-full text-left border-collapse min-w-[600px]">
+    <!-- Таблица лидеров -->
+    <div class="glass-panel overflow-hidden rounded-xl border border-[#2c2f3b] shadow-2xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="text-[#5a6278] text-[10px] font-bold uppercase tracking-widest border-b border-[#2c2f3b] bg-[#16181d]">
-                        <th class="px-6 py-4 font-mono">Rank</th>
-                        <th class="px-6 py-4 font-mono">User</th>
-                        <th class="px-6 py-4 text-center font-mono">Flags</th>
-                        <th class="px-6 py-4 text-right font-mono">Points</th>
+                    <tr class="bg-[#15171e] text-[#5a6278] uppercase text-[10px] font-bold tracking-widest border-b border-[#2c2f3b]">
+                        <th class="p-4 w-16 text-center">#</th>
+                        <th class="p-4">User</th>
+                        <th class="p-4 text-center">Solves</th>
+                        <th class="p-4 text-right">Score</th>
                     </tr>
                 </thead>
-                <tbody id="scoreboard-body" class="divide-y divide-[#2c2f3b] text-sm font-mono">
-                    <!-- Заполняется JS -->
+                <tbody class="divide-y divide-[#2c2f3b]">
+                    {% for player in leaderboard_data %}
+                    <tr class="group transition-colors hover:bg-white/5 {% if player.isMe %}bg-[#9fef00]/10 border-l-2 border-l-[#9fef00]{% endif %}">
+                        <td class="p-4 text-center font-mono text-[#5a6278] group-hover:text-white transition-colors">
+                            {% if player.rank == 1 %}
+                                <i data-lucide="crown" class="w-5 h-5 text-yellow-400 mx-auto fill-current"></i>
+                            {% elif player.rank == 2 %}
+                                <i data-lucide="medal" class="w-5 h-5 text-gray-400 mx-auto fill-current"></i>
+                            {% elif player.rank == 3 %}
+                                <i data-lucide="medal" class="w-5 h-5 text-amber-700 mx-auto fill-current"></i>
+                            {% else %}
+                                {{ player.rank }}
+                            {% endif %}
+                        </td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-[#1a1c23] border border-[#2c2f3b] overflow-hidden">
+                                    <img src="{{ player.avatar }}" class="w-full h-full object-cover">
+                                </div>
+                                <span class="font-bold text-sm text-white group-hover:text-[#9fef00] transition-colors">{{ player.user }}</span>
+                                {% if player.isMe %}
+                                    <span class="text-[10px] bg-[#9fef00]/20 text-[#9fef00] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">YOU</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="font-mono text-sm text-[#9ca3af] bg-[#1a1c23] px-2 py-1 rounded border border-[#2c2f3b]">{{ player.solved }}</span>
+                        </td>
+                        <td class="p-4 text-right">
+                            <span class="font-bold text-white font-mono tracking-tight text-lg group-hover:text-[#9fef00] transition-colors">{{ player.points }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </section>
 
-<!-- Безопасная передача данных из Django в JS -->
-{{ leaderboard_data|json_script:"leaderboard-data" }}
+<!-- Подключение Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Данные для графика -->
+{{ graph_data_json|json_script:"graph-data" }}
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-    const leaderboard = JSON.parse(document.getElementById('leaderboard-data').textContent);
+    document.addEventListener('DOMContentLoaded', () => {
+        const graphDataElement = document.getElementById('graph-data');
+        if (!graphDataElement) return;
 
-    document.addEventListener('DOMContentLoaded', () => { renderLeaderboard(); });
+        let rawContent = graphDataElement.textContent;
+        let graphData;
 
-    function renderLeaderboard() {
-        const tbody = document.getElementById('scoreboard-body');
-        tbody.innerHTML = '';
+        try {
+            graphData = JSON.parse(rawContent);
+            if (typeof graphData === 'string') {
+                graphData = JSON.parse(graphData);
+            }
+        } catch (e) {
+            console.error("Error parsing graph data:", e);
+            return;
+        }
 
-        leaderboard.forEach(p => {
-            const rowClass = p.isMe ? 'bg-[#9fef00]/5 border-l-2 border-l-[#9fef00]' : 'hover:bg-[#1a1c23]';
-            const rankColor = p.rank <= 3 ? 'text-[#9fef00]' : 'text-[#9ca3af]';
-            let rankIcon = `#${p.rank}`;
+        const ctx = document.getElementById('scoreChart').getContext('2d');
 
-            if (p.rank === 1) rankIcon = '🥇';
-            if (p.rank === 2) rankIcon = '🥈';
-            if (p.rank === 3) rankIcon = '🥉';
-
-            const html = `
-                <tr class="transition-colors border-b border-[#2c2f3b] last:border-0 ${rowClass}">
-                    <td class="px-6 py-4 font-bold ${rankColor} font-mono text-base">${rankIcon}</td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-[#13141b] border border-[#2c2f3b] flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                <img src="${p.avatar}" class="w-full h-full object-cover">
-                            </div>
-                            <span class="text-white font-bold text-sm tracking-tight">${p.user}</span>
-                            ${p.isMe ? '<span class="text-[9px] bg-[#9fef00] text-black px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">YOU</span>' : ''}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-[#9ca3af] text-center font-mono">${p.solved}</td>
-                    <td class="px-6 py-4 text-white font-bold text-right font-mono">${p.points}</td>
-                </tr>
-            `;
-            tbody.insertAdjacentHTML('beforeend', html);
+        new Chart(ctx, {
+            type: 'line', // Используем Line Chart, но с числовой осью X
+            data: graphData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear', // ВАЖНО: Линейная шкала для времени
+                        title: {
+                            display: true,
+                            text: 'Time (Hours from start)',
+                            color: '#5a6278',
+                            font: { size: 10, family: "'JetBrains Mono', monospace" }
+                        },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#5a6278',
+                            font: { family: "'JetBrains Mono', monospace", size: 10 }
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Total Score',
+                            color: '#5a6278',
+                            font: { size: 10, family: "'JetBrains Mono', monospace" }
+                        },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: {
+                            color: '#5a6278',
+                            font: { family: "'JetBrains Mono', monospace", size: 10 }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#9ca3af',
+                            font: { family: "'Inter', sans-serif", size: 11, weight: 'bold' },
+                            usePointStyle: true,
+                            boxWidth: 6
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: '#1a1c23',
+                        titleColor: '#fff',
+                        bodyColor: '#9ca3af',
+                        borderColor: '#2c2f3b',
+                        borderWidth: 1,
+                        padding: 10,
+                        displayColors: true,
+                        usePointStyle: true,
+                        callbacks: {
+                            title: function(context) {
+                                return 'Time: ' + context[0].parsed.x + 'h';
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + ' pts';
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                },
+            }
         });
-    }
+    });
 </script>
 {% endblock %}
