@@ -4,49 +4,63 @@
 
 {% block content %}
 <section class="max-w-7xl mx-auto fade-in">
-    <!-- Stats Cards (Оставляем статичными для примера, но можно обновить так же) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="glass-panel p-5 rounded-xl border border-[#2c2f3b] relative overflow-hidden group">
-            <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i data-lucide="flag" class="w-16 h-16 text-[#9fef00]"></i>
-            </div>
-            <p class="text-[#5a6278] text-xs font-bold uppercase tracking-widest mb-1">Owned Flags</p>
-            <h3 class="text-3xl font-bold text-white font-mono">{{ owned_flags }} <span class="text-lg text-[#5a6278]">/ {{ total_flags }}</span></h3>
-        </div>
-        <!-- ... другие карточки ... -->
-    </div>
+     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+         <!-- Owned Flags -->
+         <div class="glass-panel rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-transform duration-300">
+             <div class="absolute -right-4 -top-4 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rotate-12 transform scale-150">
+                 <i data-lucide="flag" class="w-32 h-32 text-white"></i>
+             </div>
+             <h3 class="text-[#9ca3af] text-xs font-bold uppercase tracking-widest mb-2">Owned Flags</h3>
+             <div class="text-4xl font-bold text-white mb-2 font-mono tracking-tight">{{ owned_flags }} <span class="text-sm text-[#5a6278] font-sans font-normal align-middle ml-1">/ {{ total_flags }}</span></div>
+             <div class="w-full bg-[#000] h-2 rounded-full mt-4 border border-[#2c2f3b]">
+                 <div class="bg-gradient-to-r from-[#9fef00] to-[#7dbf00] h-full rounded-full shadow-[0_0_10px_rgba(159,239,0,0.3)]" style="width: {{ progress_percent }}%"></div>
+             </div>
+         </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Main Panel -->
-        <div class="lg:col-span-2 glass-panel p-6 rounded-xl border border-[#2c2f3b]">
-            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <i data-lucide="terminal" class="w-5 h-5 text-[#9fef00]"></i> Mission Status
-            </h3>
-            <div class="h-64 flex items-center justify-center border border-dashed border-[#2c2f3b] rounded-lg bg-[#0d0e12]/50">
-                <p class="text-[#5a6278] font-mono text-sm">System operational. Awaiting input.</p>
-            </div>
-        </div>
+         <!-- Continue Playing -->
+         <a href="{% url 'challenges' %}" class="glass-panel rounded-xl p-6 flex flex-col justify-center items-center text-center relative overflow-hidden group cursor-pointer hover:border-[#9fef00]/30 transition-colors">
+             <div class="absolute inset-0 bg-gradient-to-br from-[#9fef00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+             <div class="w-14 h-14 rounded-full bg-[#9fef00]/10 flex items-center justify-center mb-4 text-[#9fef00] group-hover:scale-110 transition-transform duration-300 border border-[#9fef00]/20">
+                 <i data-lucide="play" class="w-6 h-6 ml-1 fill-current"></i>
+             </div>
+             <h3 class="text-white font-bold text-lg group-hover:text-[#9fef00] transition-colors">Continue Playing</h3>
+             <p class="text-[#5a6278] text-xs mt-1">Pick up where you left off</p>
+         </a>
+     </div>
 
-        <!-- Activity Log (REAL TIME) -->
-        <div class="glass-panel p-6 rounded-xl border border-[#2c2f3b] h-[500px] flex flex-col">
-            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <i data-lucide="activity" class="w-5 h-5 text-[#9fef00]"></i> Live Activity
-                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse ml-auto"></div>
-            </h3>
-
-            <!-- HTMX Container -->
-            <!-- hx-get: URL для получения обновлений -->
-            <!-- hx-trigger: событие 'data_refresh' (от WebSockets) запускает обновление -->
-            <div id="activity-log-container"
-                 class="overflow-y-auto pr-2 custom-scrollbar flex-1"
-                 hx-get="{% url 'dashboard' %}"
-                 hx-trigger="data_refresh from:body"
-                 hx-swap="innerHTML">
-
-                {% include 'partials/dashboard_data.html' %}
-
-            </div>
-        </div>
-    </div>
+     <h2 class="text-xl font-bold text-white mb-5 flex items-center gap-3">
+        <div class="w-1 h-6 bg-[#9fef00] shadow-[0_0_10px_rgba(159,239,0,0.5)]"></div>
+        Activity Log
+     </h2>
+     <div class="glass-panel rounded-xl overflow-hidden border border-[#2c2f3b]">
+         <div class="p-4 border-b border-[#2c2f3b] bg-[#15171e] flex items-center gap-3">
+             <div class="flex gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500/50"></div><div class="w-2.5 h-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div><div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500/50"></div></div>
+             <span class="text-xs text-[#5a6278] font-mono ml-2">user_activity.log</span>
+         </div>
+         <div>
+             {% for activity in activity_log %}
+             <div class="flex items-center justify-between p-4 border-b border-[#2c2f3b]/50 hover:bg-white/5 transition-colors group cursor-default">
+                 <div class="flex items-center gap-4">
+                     {% if activity.type == 'solve' %}
+                         <div class="p-2 rounded bg-[#9fef00]/10 text-[#9fef00]"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
+                         <div>
+                             <div class="text-white font-bold text-sm group-hover:text-[#9fef00] transition-colors">Solved "{{ activity.challenge.title }}"</div>
+                             <div class="text-[#5a6278] text-xs mt-0.5">{{ activity.challenge.category.name }} • {{ activity.challenge.points }} pts</div>
+                         </div>
+                     {% else %}
+                         <div class="p-2 rounded bg-red-500/10 text-red-500"><i data-lucide="x-circle" class="w-5 h-5"></i></div>
+                         <div>
+                             <div class="text-white font-bold text-sm group-hover:text-red-500 transition-colors">Failed "{{ activity.challenge.title }}"</div>
+                             <div class="text-[#5a6278] text-xs mt-0.5">{{ activity.challenge.category.name }} • {{ activity.challenge.points }} pts</div>
+                         </div>
+                     {% endif %}
+                 </div>
+                 <span class="text-[#5a6278] text-xs font-mono bg-black/30 px-2 py-1 rounded border border-white/5">{{ activity.date|timesince }} ago</span>
+             </div>
+             {% empty %}
+             <div class="p-4 text-center text-[#5a6278]">No activity yet.</div>
+             {% endfor %}
+         </div>
+     </div>
 </section>
 {% endblock %}
