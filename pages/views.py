@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -11,16 +11,25 @@ from collections import defaultdict
 from django.utils import timezone
 
 
+def home(request):
+    """
+    Главная страница (Landing Page).
+    Если пользователь авторизован -> редирект на Dashboard.
+    """
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+    return render(request, 'home.html')
+
+
 @login_required
 def dashboard(request):
     user_solves = Solve.objects.filter(user=request.user)
     owned_flags = user_solves.count()
 
-    # Считаем только АКТИВНЫЕ задачи в общем количестве (или все, зависит от логики,
-    # но обычно процент прогресса считается от доступных задач)
+    # Считаем только АКТИВНЫЕ задачи в общем количестве
     total_flags = Challenge.objects.filter(is_active=True).count()
 
-    # 1. Получаем ЛИЧНЫЕ решения (только текущего пользователя)
+    # 1. Получаем ЛИЧНЫЕ решения
     solves_qs = Solve.objects.filter(user=request.user).select_related('user', 'challenge',
                                                                        'challenge__category').order_by('-date')[:20]
 
@@ -67,10 +76,9 @@ def dashboard(request):
             'sort_date': f.timestamp
         })
 
-    # Сортируем по дате (сначала новые) и берем последние 10 событий
     activity_log = sorted(activity_list, key=lambda x: x['sort_date'], reverse=True)[:10]
 
-    # Проверка на ментора/админа
+    # Проверка на ментора/админа для уведомления
     is_mentor = request.user.is_superuser or request.user.groups.filter(name='Mentors').exists()
 
     context = {
@@ -78,24 +86,19 @@ def dashboard(request):
         'total_flags': total_flags,
         'activity_log': activity_log,
         'progress_percent': int((owned_flags / total_flags * 100)) if total_flags > 0 else 0,
-        'is_mentor': is_mentor,  # Передаем флаг в шаблон
+        'is_mentor': is_mentor,
     }
     return render(request, 'dashboard.html', context)
 
 
 @login_required
 def challenges_view(request):
-    # 1. Получаем только АКТИВНЫЕ задачи
     challenges = Challenge.objects.filter(is_active=True).select_related('category')
-
-    # 2. Получаем категории, у которых есть хотя бы одна АКТИВНАЯ задача
-    # distinct() нужен, чтобы категория не повторялась, если в ней несколько задач
     categories_qs = Category.objects.filter(challenges__is_active=True).distinct()
 
     categories_data = {}
     for cat in categories_qs:
-        icon = 'folder'  # Можно вернуть иконку, если она есть в модели
-
+        icon = 'folder'
         categories_data[cat.name] = {
             'name': cat.name,
             'icon': icon
@@ -110,7 +113,6 @@ def challenges_view(request):
 
     challenges_data = []
     for c in challenges:
-        # Убрано ограничение среза ([:10]), теперь показываются ВСЕ решившие
         solves_list = [{
             'user': s.user.username,
             'avatar': s.user.avatar_url,
@@ -149,7 +151,6 @@ def challenges_view(request):
 
 @login_required
 def scoreboard(request):
-    # 1. Получаем ТОП-10 пользователей для графика
     top_users_qs = User.objects.annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         flags_count=Count('solves')
@@ -157,11 +158,9 @@ def scoreboard(request):
 
     top_users_list = list(top_users_qs)
 
-    # Если текущий пользователь не в топ-10, добавляем его в список для графика
     if request.user.is_authenticated and request.user not in top_users_list:
         top_users_list.append(request.user)
 
-    # 2. Получаем ПОЛНЫЙ список для таблицы (топ-50)
     all_users_qs = User.objects.annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         flags_count=Count('solves')
@@ -178,10 +177,7 @@ def scoreboard(request):
             'avatar': u.avatar_url
         })
 
-    # 3. Подготовка данных для графика
     graph_data = {'datasets': []}
-
-    # Находим глобальное время старта (самое первое решение на сервере)
     first_solve_ever = Solve.objects.aggregate(Min('date'))['date__min']
     global_start_time = first_solve_ever if first_solve_ever else timezone.now()
 
@@ -192,7 +188,6 @@ def scoreboard(request):
 
     for i, user in enumerate(top_users_list):
         solves = Solve.objects.filter(user=user).select_related('challenge').order_by('date')
-
         color = colors[i % len(colors)]
 
         if not solves.exists():
@@ -213,17 +208,11 @@ def scoreboard(request):
 
         for solve in solves:
             current_score += solve.challenge.points
-
-            # Вычисляем время от ГЛОБАЛЬНОГО старта
             time_delta = solve.date - global_start_time
             seconds_elapsed = int(time_delta.total_seconds())
-
-            if seconds_elapsed < 0:
-                seconds_elapsed = 0
-
+            if seconds_elapsed < 0: seconds_elapsed = 0
             data_points.append({'x': seconds_elapsed, 'y': current_score})
 
-        # Добавляем финальную точку "сейчас"
         now_delta = timezone.now() - global_start_time
         now_seconds = int(now_delta.total_seconds())
         data_points.append({'x': now_seconds, 'y': current_score})
@@ -256,8 +245,6 @@ def submit_flag(request):
         challenge_id = data.get('challenge_id')
         flag_input = data.get('flag')
 
-        # Проверяем, что задача существует И она активна
-        # Студент не должен иметь возможность сдать флаг для скрытой задачи через API
         challenge = get_object_or_404(Challenge, id=challenge_id, is_active=True)
 
         attempts_count = Attempt.objects.filter(user=request.user, challenge=challenge).count()
