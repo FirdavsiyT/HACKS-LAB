@@ -1,0 +1,57 @@
+{% extends 'mentors/base_mentor.html' %}
+
+{% block mentor_content %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="glass-panel p-5 rounded-xl border border-[#2c2f3b] flex items-center justify-between">
+        <div>
+            <p class="text-[#5a6278] text-xs font-bold uppercase tracking-wider mb-1">Total Users</p>
+            <h3 class="text-3xl font-bold text-white font-mono">{{ total_users }}</h3>
+        </div>
+        <div class="p-3 rounded bg-[#1a1c23] text-[#9fef00] border border-[#2c2f3b]"><i data-lucide="users" class="w-6 h-6"></i></div>
+    </div>
+    <div class="glass-panel p-5 rounded-xl border border-[#2c2f3b] flex items-center justify-between">
+        <div>
+            <p class="text-[#5a6278] text-xs font-bold uppercase tracking-wider mb-1">Active Challenges</p>
+            <h3 class="text-3xl font-bold text-white font-mono">{{ total_challenges }}</h3>
+        </div>
+        <div class="p-3 rounded bg-[#1a1c23] text-blue-400 border border-[#2c2f3b]"><i data-lucide="flag" class="w-6 h-6"></i></div>
+    </div>
+    <div class="glass-panel p-5 rounded-xl border border-[#2c2f3b] flex items-center justify-between">
+        <div>
+            <p class="text-[#5a6278] text-xs font-bold uppercase tracking-wider mb-1">Total Solves</p>
+            <h3 class="text-3xl font-bold text-white font-mono">{{ total_solves }}</h3>
+        </div>
+        <div class="p-3 rounded bg-[#1a1c23] text-purple-400 border border-[#2c2f3b]"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+    </div>
+</div>
+
+<div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden">
+    <div class="p-4 bg-[#1a1c23] border-b border-[#2c2f3b] flex justify-between items-center">
+        <h3 class="font-bold text-white">Recent Global Solves</h3>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-[#13141b] text-[#5a6278] font-mono text-xs uppercase">
+                <tr>
+                    <th class="px-4 py-3">User</th>
+                    <th class="px-4 py-3">Challenge</th>
+                    <th class="px-4 py-3 text-right">Time</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2c2f3b]">
+                {% for solve in recent_solves %}
+                <tr class="hover:bg-white/5 transition-colors">
+                    <td class="px-4 py-3 font-bold text-white">{{ solve.user.username }}</td>
+                    <td class="px-4 py-3 text-[#9ca3af]">{{ solve.challenge.title }}</td>
+                    <td class="px-4 py-3 text-right font-mono text-[#5a6278]">{{ solve.date|date:"H:i d/m" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="px-4 py-8 text-center text-[#5a6278]">No activity yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

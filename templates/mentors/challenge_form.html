@@ -1,0 +1,82 @@
+{% extends 'mentors/base_mentor.html' %}
+
+{% block mentor_content %}
+<div class="max-w-3xl mx-auto">
+    <div class="mb-6 flex items-center gap-2 text-[#5a6278] text-sm">
+        <a href="{% url 'mentors:challenges_list' %}" class="hover:text-white transition-colors">Challenges</a>
+        <span>/</span>
+        <span class="text-white">{{ title }}</span>
+    </div>
+
+    <div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden">
+        <div class="p-6 border-b border-[#2c2f3b] bg-[#1a1c23]">
+            <h2 class="text-xl font-bold text-white">{{ title }}</h2>
+        </div>
+        
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded text-sm">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Title -->
+                <div class="md:col-span-2 space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Title</label>
+                    {{ form.title }}
+                    {{ form.title.errors }}
+                </div>
+
+                <!-- Category & Difficulty -->
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Difficulty</label>
+                    {{ form.difficulty }}
+                </div>
+
+                <!-- Points & Attempts -->
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Points</label>
+                    {{ form.points }}
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Max Attempts (0 = ∞)</label>
+                    {{ form.max_attempts }}
+                </div>
+
+                <!-- Flag -->
+                <div class="md:col-span-2 space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Flag Pattern</label>
+                    {{ form.flag }}
+                    <p class="text-[10px] text-[#5a6278]">The secret flag users need to find (e.g. CTF{some_secret})</p>
+                </div>
+
+                <!-- Description -->
+                <div class="md:col-span-2 space-y-1">
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Description (Markdown supported)</label>
+                    {{ form.description }}
+                </div>
+                
+                <!-- Active Toggle -->
+                <div class="md:col-span-2 flex items-center gap-3">
+                    {{ form.is_active }}
+                    <label class="text-sm text-white">Challenge is active (visible to users)</label>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-[#2c2f3b] flex justify-end gap-3">
+                <a href="{% url 'mentors:challenges_list' %}" class="px-4 py-2 rounded bg-[#2c2f3b] text-white hover:bg-[#3f4454] transition-colors text-sm font-bold">Cancel</a>
+                <button type="submit" class="px-6 py-2 rounded bg-[#9fef00] text-black hover:bg-[#8cd600] transition-colors text-sm font-bold">
+                    Save Challenge
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

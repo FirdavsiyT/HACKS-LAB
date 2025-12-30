@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block header_title %}MENTOR_MODE{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 fade-in pb-12">
+    
+    <!-- Sidebar -->
+    <aside class="w-full md:w-64 flex-shrink-0">
+        <div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden sticky top-24">
+            <div class="p-4 bg-[#1a1c23] border-b border-[#2c2f3b]">
+                <h3 class="text-white font-bold flex items-center gap-2">
+                    <i data-lucide="shield-alert" class="text-[#9fef00]"></i>
+                    Admin Control
+                </h3>
+            </div>
+            <nav class="flex flex-col p-2 space-y-1">
+                <a href="{% url 'mentors:dashboard' %}" 
+                   class="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'mentors' %}bg-[#9fef00]/10 text-[#9fef00] border border-[#9fef00]/20{% else %}text-[#9ca3af] hover:text-white hover:bg-white/5{% endif %}">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </a>
+                <a href="{% url 'mentors:challenges_list' %}" 
+                   class="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors {% if 'challenge' in request.resolver_match.url_name and request.resolver_match.app_name == 'mentors' %}bg-[#9fef00]/10 text-[#9fef00] border border-[#9fef00]/20{% else %}text-[#9ca3af] hover:text-white hover:bg-white/5{% endif %}">
+                    <i data-lucide="flag" class="w-4 h-4"></i> Challenges
+                </a>
+                <!-- Placeholder links -->
+                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-[#9ca3af] hover:text-white hover:bg-white/5 transition-colors opacity-50 cursor-not-allowed">
+                    <i data-lucide="users" class="w-4 h-4"></i> Users
+                </a>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium text-[#9ca3af] hover:text-white hover:bg-white/5 transition-colors opacity-50 cursor-not-allowed">
+                    <i data-lucide="settings" class="w-4 h-4"></i> Settings
+                </a>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 min-w-0">
+        {% block mentor_content %}{% endblock %}
+    </main>
+
+</div>
+{% endblock %}

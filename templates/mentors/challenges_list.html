@@ -1,0 +1,64 @@
+{% extends 'mentors/base_mentor.html' %}
+
+{% block mentor_content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-bold text-white">Manage Challenges</h2>
+    <a href="{% url 'mentors:challenge_create' %}" class="bg-[#9fef00] hover:bg-[#8cd600] text-black font-bold py-2 px-4 rounded text-sm flex items-center gap-2 transition-all">
+        <i data-lucide="plus" class="w-4 h-4"></i> Create New
+    </a>
+</div>
+
+<div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-[#1a1c23] text-[#5a6278] font-mono text-xs uppercase">
+                <tr>
+                    <th class="px-4 py-3">ID</th>
+                    <th class="px-4 py-3">Title</th>
+                    <th class="px-4 py-3">Category</th>
+                    <th class="px-4 py-3">Pts</th>
+                    <th class="px-4 py-3">Difficulty</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-[#2c2f3b]">
+                {% for challenge in challenges %}
+                <tr class="group hover:bg-white/5 transition-colors">
+                    <td class="px-4 py-3 font-mono text-[#5a6278]">#{{ challenge.id }}</td>
+                    <td class="px-4 py-3 font-bold text-white">{{ challenge.title }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded bg-[#2c2f3b] text-[#9ca3af] text-xs border border-[#3f4454]">{{ challenge.category.name }}</span>
+                    </td>
+                    <td class="px-4 py-3 font-mono text-[#9fef00]">{{ challenge.points }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold uppercase
+                            {% if challenge.difficulty == 'Easy' %}text-green-500 bg-green-500/10
+                            {% elif challenge.difficulty == 'Medium' %}text-yellow-500 bg-yellow-500/10
+                            {% else %}text-red-500 bg-red-500/10{% endif %}">
+                            {{ challenge.difficulty }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <a href="{% url 'mentors:challenge_edit' challenge.id %}" class="p-1.5 hover:bg-[#2c2f3b] rounded text-blue-400 transition-colors" title="Edit">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </a>
+                            <a href="{% url 'mentors:challenge_delete' challenge.id %}" class="p-1.5 hover:bg-[#2c2f3b] rounded text-red-400 transition-colors" title="Delete">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-12 text-center text-[#5a6278]">
+                        <i data-lucide="folder-open" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        No challenges found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

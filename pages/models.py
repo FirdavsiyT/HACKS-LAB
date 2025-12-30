@@ -29,6 +29,7 @@ class Challenge(models.Model):
     flag = models.CharField(max_length=200)
     author = models.CharField(max_length=100, default="Admin")
     max_attempts = models.PositiveIntegerField(default=0, help_text="0 = безлимитно")
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.title} ({self.points})"
