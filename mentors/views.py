@@ -1,4 +1,5 @@
 import csv
+import codecs
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -226,40 +227,78 @@ def category_delete(request, pk):
 @login_required
 @mentor_required
 def users_list(request):
-    users = User.objects.filter(is_superuser=False).annotate(
+    # 1. Считаем максимально возможный балл
+    max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
+    max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
+
+    # 2. Получаем студентов
+    users_qs = User.objects.filter(is_superuser=False).annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         solved_count=Count('solves')
     ).order_by('-total_points')
 
-    return render(request, 'mentors/users_list.html', {'users': users})
+    # 3. Вычисляем процент для каждого студента
+    users = []
+    for user in users_qs:
+        if max_possible_points > 0:
+            user.percentage = (user.total_points / max_possible_points) * 100
+        else:
+            user.percentage = 0.0
+        users.append(user)
+
+    context = {
+        'users': users,
+        'max_possible_points': max_possible_points
+    }
+    return render(request, 'mentors/users_list.html', context)
 
 
 @login_required
 @mentor_required
 def export_users_csv(request):
     """
-    Экспорт результатов всех студентов в CSV файл.
+    Export student results to CSV.
+    Uses semicolon delimiter for Excel compatibility.
     """
     response = HttpResponse(content_type='text/csv')
     timestamp = timezone.now().strftime('%Y-%m-%d_%H-%M')
     response['Content-Disposition'] = f'attachment; filename="hacklabs_results_{timestamp}.csv"'
 
-    writer = csv.writer(response)
-    writer.writerow(['Rank', 'Username', 'Email', 'Total Score', 'Flags Solved', 'Last Login'])
+    # Add BOM for Excel compatibility with UTF-8
+    response.write(codecs.BOM_UTF8)
 
+    writer = csv.writer(response, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+    # Headers (Last Login removed)
+    writer.writerow(['Rank', 'Username', 'Total Score', 'Max Possible Score', 'Completion Percentage'])
+
+    # 1. Max points
+    max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
+    max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
+
+    # 2. Get users
     users = User.objects.filter(is_superuser=False).annotate(
-        total_points=Coalesce(Sum('solves__challenge__points'), 0),
-        solved_count=Count('solves')
+        total_points=Coalesce(Sum('solves__challenge__points'), 0)
     ).order_by('-total_points')
 
     for index, user in enumerate(users, 1):
+        user_points = user.total_points
+
+        # 3. Calculate percentage
+        if max_possible_points > 0:
+            percentage = (user_points / max_possible_points) * 100
+        else:
+            percentage = 0.0
+
+        percentage_str = f"{percentage:.2f}%"
+
+        # 4. Write row (No Last Login)
         writer.writerow([
             index,
             user.username,
-            user.email,
-            user.total_points,
-            user.solved_count,
-            user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never'
+            user_points,
+            max_possible_points,
+            percentage_str
         ])
 
     return response
@@ -277,7 +316,7 @@ def reset_platform(request):
         Solve.objects.all().delete()
         Attempt.objects.all().delete()
 
-        # Удаляем студентов, исключая менторов
+        # Remove students, exclude mentors/staff
         deleted_count, _ = User.objects.filter(
             is_superuser=False,
             is_staff=False
