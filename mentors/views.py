@@ -2,7 +2,7 @@ import csv
 import codecs
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.db.models import Count, Sum
@@ -10,6 +10,7 @@ from django.db.models.functions import Coalesce
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
+
 from pages.models import Challenge, Solve, Category, Attempt
 from users.models import User
 from .forms import ChallengeForm, CategoryForm
@@ -22,7 +23,6 @@ def mentor_required(view_func):
             return view_func(request, *args, **kwargs)
         else:
             raise PermissionDenied
-
     return _wrapped_view
 
 
@@ -31,7 +31,7 @@ def mentor_required(view_func):
 @login_required
 @mentor_required
 def dashboard(request):
-    total_users = User.objects.filter(is_superuser=False).count()
+    total_users = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').count()
     total_challenges = Challenge.objects.count()
     total_solves = Solve.objects.count()
 
@@ -231,8 +231,8 @@ def users_list(request):
     max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
     max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
 
-    # 2. Получаем студентов
-    users_qs = User.objects.filter(is_superuser=False).annotate(
+    # 2. Получаем студентов (ИСКЛЮЧАЯ админов и менторов)
+    users_qs = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         solved_count=Count('solves')
     ).order_by('-total_points')
@@ -269,15 +269,15 @@ def export_users_csv(request):
 
     writer = csv.writer(response, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-    # Headers (Last Login removed)
+    # Headers
     writer.writerow(['Rank', 'Username', 'Total Score', 'Max Possible Score', 'Completion Percentage'])
 
     # 1. Max points
     max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
     max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
 
-    # 2. Get users
-    users = User.objects.filter(is_superuser=False).annotate(
+    # 2. Get users (EXCLUDING admins and mentors)
+    users = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0)
     ).order_by('-total_points')
 
@@ -292,7 +292,7 @@ def export_users_csv(request):
 
         percentage_str = f"{percentage:.2f}%"
 
-        # 4. Write row (No Last Login)
+        # 4. Write row
         writer.writerow([
             index,
             user.username,
