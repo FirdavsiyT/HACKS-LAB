@@ -7,9 +7,17 @@
         <p class="text-[#5a6278] text-sm">Monitor progress or reset the classroom.</p>
     </div>
 
-    <button onclick="document.getElementById('reset-modal').classList.remove('hidden')" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 font-bold py-2 px-4 rounded text-sm flex items-center gap-2 transition-all shadow-lg hover:shadow-red-500/20">
-        <i data-lucide="trash-2" class="w-4 h-4"></i> RESET CLASSROOM
-    </button>
+    <div class="flex gap-3">
+        <!-- Кнопка экспорта -->
+        <a href="{% url 'mentors:export_users_csv' %}" class="bg-[#2c2f3b] hover:bg-white hover:text-black text-white border border-white/20 font-bold py-2 px-4 rounded text-sm flex items-center gap-2 transition-all">
+            <i data-lucide="download" class="w-4 h-4"></i> EXPORT RESULTS
+        </a>
+
+        <!-- Кнопка сброса -->
+        <button onclick="document.getElementById('reset-modal').classList.remove('hidden')" class="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 font-bold py-2 px-4 rounded text-sm flex items-center gap-2 transition-all shadow-lg hover:shadow-red-500/20">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> RESET CLASSROOM
+        </button>
+    </div>
 </div>
 
 <div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden">

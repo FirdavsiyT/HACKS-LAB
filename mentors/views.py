@@ -1,25 +1,25 @@
+import csv
+from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.db import transaction
-from django.core.exceptions import PermissionDenied  # <--- Нужно для вызова 403 ошибки
+from django.core.exceptions import PermissionDenied
+from django.utils import timezone
 from pages.models import Challenge, Solve, Category, Attempt
 from users.models import User
 from .forms import ChallengeForm, CategoryForm
 
 
 # --- Custom Decorator ---
-# Вместо перенаправления, мы вызываем ошибку, чтобы показать шаблон 403.html
 def mentor_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
-        # Если пользователь суперюзер ИЛИ состоит в группе Mentors
         if request.user.is_superuser or request.user.groups.filter(name='Mentors').exists():
             return view_func(request, *args, **kwargs)
         else:
-            # Иначе вызываем ошибку доступа -> Django покажет 403.html
             raise PermissionDenied
 
     return _wrapped_view
@@ -28,7 +28,7 @@ def mentor_required(view_func):
 # --- VIEWS ---
 
 @login_required
-@mentor_required  # Используем наш новый декоратор везде
+@mentor_required
 def dashboard(request):
     total_users = User.objects.filter(is_superuser=False).count()
     total_challenges = Challenge.objects.count()
@@ -232,6 +232,37 @@ def users_list(request):
     ).order_by('-total_points')
 
     return render(request, 'mentors/users_list.html', {'users': users})
+
+
+@login_required
+@mentor_required
+def export_users_csv(request):
+    """
+    Экспорт результатов всех студентов в CSV файл.
+    """
+    response = HttpResponse(content_type='text/csv')
+    timestamp = timezone.now().strftime('%Y-%m-%d_%H-%M')
+    response['Content-Disposition'] = f'attachment; filename="hacklabs_results_{timestamp}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Rank', 'Username', 'Email', 'Total Score', 'Flags Solved', 'Last Login'])
+
+    users = User.objects.filter(is_superuser=False).annotate(
+        total_points=Coalesce(Sum('solves__challenge__points'), 0),
+        solved_count=Count('solves')
+    ).order_by('-total_points')
+
+    for index, user in enumerate(users, 1):
+        writer.writerow([
+            index,
+            user.username,
+            user.email,
+            user.total_points,
+            user.solved_count,
+            user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else 'Never'
+        ])
+
+    return response
 
 
 @login_required

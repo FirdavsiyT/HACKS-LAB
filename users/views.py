@@ -41,7 +41,12 @@ def avatar_setup(request):
 
         return redirect('dashboard')
 
-    return render(request, 'users/avatar_setup.html')
+    # Generate avatars
+    avatars = [
+        f"/static/img/avatars/avatar_{i}.svg"
+        for i in range(1, 13)
+    ]
+    return render(request, 'users/avatar_setup.html', {'avatars': avatars})
 
 
 @login_required
@@ -49,23 +54,7 @@ def profile(request):
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        if action == 'update_email':
-            email = request.POST.get('email')
-            password = request.POST.get('password')
-
-            if not email or not password:
-                messages.error(request, 'All fields are required')
-            elif request.user.check_password(password):
-                if User.objects.filter(email=email).exclude(pk=request.user.pk).exists():
-                    messages.error(request, 'Email is already in use')
-                else:
-                    request.user.email = email
-                    request.user.save()
-                    messages.success(request, 'Email successfully updated')
-            else:
-                messages.error(request, 'Incorrect password')
-
-        elif action == 'update_password':
+        if action == 'update_password':
             current_password = request.POST.get('current_password')
             new_password = request.POST.get('new_password')
 
@@ -86,6 +75,13 @@ def profile(request):
                 request.user.save()
                 messages.success(request, 'Avatar updated!')
 
+        elif action == 'update_email':
+            email = request.POST.get('email')
+            if email:
+                request.user.email = email
+                request.user.save()
+                messages.success(request, 'Email updated!')
+
         return redirect('profile')
 
     score = request.user.score
@@ -105,10 +101,26 @@ def profile(request):
     else:
         accuracy = "0%" if flags_count == 0 else "100%"
 
+    # --- УНИКАЛЬНЫЙ ДИЗАЙН РОЛЕЙ ---
+    if request.user.is_superuser:
+        role = 'ADMIN'
+        # Красный стиль с тенью
+        role_class = 'bg-red-500/10 border-red-500/20 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
+    elif request.user.groups.filter(name='Mentors').exists():
+        role = 'MENTOR'
+        # Золотой/Желтый стиль с тенью
+        role_class = 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]'
+    else:
+        role = 'HACKER'
+        # Стандартный зеленый (без сильной тени)
+        role_class = 'bg-[#9fef00]/10 border-[#9fef00]/20 text-[#9fef00]'
+
     context = {
         'score': score,
         'flags_count': flags_count,
         'rank': rank,
-        'accuracy': accuracy
+        'accuracy': accuracy,
+        'role': role,
+        'role_class': role_class
     }
     return render(request, 'users/profile.html', context)

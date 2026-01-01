@@ -18,11 +18,18 @@
             <h1 class="text-3xl font-bold text-white mb-2 tracking-tight">{{ user.username }}</h1>
             <div class="flex flex-wrap justify-center md:justify-start gap-3">
                 <span class="px-3 py-1 rounded bg-white/5 border border-white/10 text-[#5a6278] text-xs font-mono uppercase">{{ user.email }}</span>
-                {% if user.is_superuser %}
-                <span class="px-3 py-1 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-wider">Admin</span>
-                {% else %}
-                <span class="px-3 py-1 rounded bg-[#9fef00]/10 border border-[#9fef00]/20 text-[#9fef00] text-xs font-bold uppercase tracking-wider">Hacker</span>
-                {% endif %}
+
+                <!-- Dynamic Role Badge -->
+                <span class="px-3 py-1 rounded border {{ role_class }} text-xs font-bold uppercase tracking-wider transition-all duration-300 hover:scale-105 cursor-default flex items-center gap-2">
+                    {% if role == 'ADMIN' %}
+                        <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                    {% elif role == 'MENTOR' %}
+                        <i data-lucide="graduation-cap" class="w-3 h-3"></i>
+                    {% else %}
+                        <i data-lucide="terminal" class="w-3 h-3"></i>
+                    {% endif %}
+                    {{ role }}
+                </span>
             </div>
         </div>
 
