@@ -10,10 +10,19 @@ from django.db.models.functions import Coalesce
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
+from datetime import timedelta
+
+# Try to import python-docx, handle gracefully if missing
+try:
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+except ImportError:
+    Document = None
 
 from pages.models import Challenge, Solve, Category, Attempt
 from users.models import User
-from .forms import ChallengeForm, CategoryForm
+from .models import LessonSettings
+from .forms import ChallengeForm, CategoryForm, TimerSettingsForm
 
 
 # --- Custom Decorator ---
@@ -23,6 +32,7 @@ def mentor_required(view_func):
             return view_func(request, *args, **kwargs)
         else:
             raise PermissionDenied
+
     return _wrapped_view
 
 
@@ -37,11 +47,61 @@ def dashboard(request):
 
     recent_solves = Solve.objects.select_related('user', 'challenge').order_by('-date')[:10]
 
+    # Timer logic
+    lesson_settings = LessonSettings.get_settings()
+
+    # Pre-fill form with current duration if active
+    initial_data = {}
+    if lesson_settings.start_time and lesson_settings.end_time:
+        duration = (lesson_settings.end_time - lesson_settings.start_time).total_seconds() / 60
+        delay = 0
+        if lesson_settings.hard_deadline:
+            delay = (lesson_settings.hard_deadline - lesson_settings.end_time).total_seconds() / 60
+
+        initial_data = {
+            'duration_minutes': int(round(duration)),
+            'delay_minutes': int(round(delay))
+        }
+
+    timer_form = TimerSettingsForm(initial=initial_data)
+
+    if request.method == 'POST' and 'set_timer' in request.POST:
+        timer_form = TimerSettingsForm(request.POST)
+        if timer_form.is_valid():
+            minutes = timer_form.cleaned_data.get('duration_minutes')
+            delay = timer_form.cleaned_data.get('delay_minutes') or 0
+
+            if minutes:
+                now = timezone.now()
+
+                if lesson_settings.start_time and lesson_settings.end_time:
+                    lesson_settings.end_time = lesson_settings.start_time + timedelta(minutes=minutes)
+                    action_msg = f"Timer updated. Total duration: {minutes} min."
+                else:
+                    lesson_settings.start_time = now
+                    lesson_settings.end_time = now + timedelta(minutes=minutes)
+                    action_msg = f"Timer started for {minutes} minutes."
+
+                lesson_settings.hard_deadline = lesson_settings.end_time + timedelta(minutes=delay)
+                lesson_settings.save()
+                messages.success(request, f'{action_msg} Hard stop delay: {delay} min.')
+            return redirect('mentors:dashboard')
+
+    if request.method == 'POST' and 'reset_timer' in request.POST:
+        lesson_settings.start_time = None
+        lesson_settings.end_time = None
+        lesson_settings.hard_deadline = None
+        lesson_settings.save()
+        messages.success(request, 'Timer stopped.')
+        return redirect('mentors:dashboard')
+
     context = {
         'total_users': total_users,
         'total_challenges': total_challenges,
         'total_solves': total_solves,
         'recent_solves': recent_solves,
+        'lesson_settings': lesson_settings,
+        'timer_form': timer_form,
     }
     return render(request, 'mentors/dashboard.html', context)
 
@@ -81,6 +141,70 @@ def challenges_list(request):
         'current_category': category_filter
     }
     return render(request, 'mentors/challenges_list.html', context)
+
+
+@login_required
+@mentor_required
+def export_challenges_docx(request):
+    """
+    Generates a .docx file with all ACTIVE challenges using the specified template.
+    Requires: pip install python-docx
+    """
+    if Document is None:
+        messages.error(request,
+                       "Library 'python-docx' is missing. Please install it on the server: pip install python-docx")
+        return redirect('mentors:challenges_list')
+
+    # Get active challenges
+    challenges = Challenge.objects.filter(is_active=True).select_related('category').order_by('category__name',
+                                                                                              'points')
+
+    if not challenges.exists():
+        messages.warning(request, "No active challenges to export.")
+        return redirect('mentors:challenges_list')
+
+    document = Document()
+
+    # Document Title
+    main_title = document.add_heading('HackLabs Active Challenges', 0)
+    main_title.alignment = 1  # Center
+
+    timestamp = timezone.now().strftime('%Y-%m-%d %H:%M')
+    p_date = document.add_paragraph(f"Exported on: {timestamp}")
+    p_date.alignment = 1
+
+    document.add_paragraph("-" * 50).alignment = 1
+
+    for challenge in challenges:
+        # Challenge Block
+        p = document.add_paragraph()
+        p.space_after = Pt(12)
+
+        # Helper to add bold label + text
+        def add_line(label, text):
+            run_label = p.add_run(f"{label} ")
+            run_label.bold = True
+            run_label.font.color.rgb = RGBColor(0, 0, 0)
+            p.add_run(f"{text}\n")
+
+        add_line("Title:", challenge.title)
+        add_line("Category:", challenge.category.name if challenge.category else "Uncategorized")
+        add_line("Description:", challenge.description)
+        add_line("Flag:", challenge.flag)
+        add_line("Award:", f"{challenge.points} Pts")
+
+        # Visual Separator
+        sep = document.add_paragraph("_" * 30)
+        sep.alignment = 1  # Center
+        sep.space_after = Pt(24)
+
+    # HTTP Response
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    filename = f"challenges_export_{timezone.now().strftime('%Y%m%d')}.docx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    document.save(response)
+    return response
 
 
 @login_required
@@ -227,17 +351,17 @@ def category_delete(request, pk):
 @login_required
 @mentor_required
 def users_list(request):
-    # 1. Считаем максимально возможный балл
+    # 1. Calculate max possible score
     max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
     max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
 
-    # 2. Получаем студентов (ИСКЛЮЧАЯ админов и менторов)
+    # 2. Get students (EXCLUDING admins and mentors)
     users_qs = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         solved_count=Count('solves')
     ).order_by('-total_points')
 
-    # 3. Вычисляем процент для каждого студента
+    # 3. Calculate percentage for each student
     users = []
     for user in users_qs:
         if max_possible_points > 0:
@@ -258,48 +382,30 @@ def users_list(request):
 def export_users_csv(request):
     """
     Export student results to CSV.
-    Uses semicolon delimiter for Excel compatibility.
     """
     response = HttpResponse(content_type='text/csv')
     timestamp = timezone.now().strftime('%Y-%m-%d_%H-%M')
     response['Content-Disposition'] = f'attachment; filename="hacklabs_results_{timestamp}.csv"'
 
-    # Add BOM for Excel compatibility with UTF-8
     response.write(codecs.BOM_UTF8)
-
     writer = csv.writer(response, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-    # Headers
     writer.writerow(['Rank', 'Username', 'Total Score', 'Max Possible Score', 'Completion Percentage'])
 
-    # 1. Max points
     max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
     max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
 
-    # 2. Get users (EXCLUDING admins and mentors)
     users = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0)
     ).order_by('-total_points')
 
     for index, user in enumerate(users, 1):
         user_points = user.total_points
-
-        # 3. Calculate percentage
         if max_possible_points > 0:
             percentage = (user_points / max_possible_points) * 100
         else:
             percentage = 0.0
-
         percentage_str = f"{percentage:.2f}%"
-
-        # 4. Write row
-        writer.writerow([
-            index,
-            user.username,
-            user_points,
-            max_possible_points,
-            percentage_str
-        ])
+        writer.writerow([index, user.username, user_points, max_possible_points, percentage_str])
 
     return response
 
@@ -316,7 +422,12 @@ def reset_platform(request):
         Solve.objects.all().delete()
         Attempt.objects.all().delete()
 
-        # Remove students, exclude mentors/staff
+        lesson_settings = LessonSettings.get_settings()
+        lesson_settings.start_time = None
+        lesson_settings.end_time = None
+        lesson_settings.hard_deadline = None
+        lesson_settings.save()
+
         deleted_count, _ = User.objects.filter(
             is_superuser=False,
             is_staff=False

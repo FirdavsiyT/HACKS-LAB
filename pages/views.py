@@ -6,6 +6,7 @@ from django.db.models import Sum, Count, Min, Q
 from django.db.models.functions import TruncDate, Coalesce
 from .models import Challenge, Category, Solve, Attempt
 from users.models import User
+from mentors.models import LessonSettings
 import json
 from collections import defaultdict
 from django.utils import timezone
@@ -13,6 +14,9 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 
 def home(request):
+    """
+    Main Landing Page.
+    """
     if request.user.is_authenticated:
         return redirect('dashboard')
     return render(request, 'home.html')
@@ -22,11 +26,16 @@ def home(request):
 def dashboard(request):
     user_solves = Solve.objects.filter(user=request.user)
     owned_flags = user_solves.count()
+
+    # Only active challenges
     total_flags = Challenge.objects.filter(is_active=True).count()
 
-    solves_qs = Solve.objects.filter(user=request.user).select_related('user', 'challenge',
-                                                                       'challenge__category').order_by('-date')[:20]
+    # 1. Personal Solves
+    solves_qs = Solve.objects.filter(user=request.user).select_related(
+        'user', 'challenge', 'challenge__category'
+    ).order_by('-date')[:20]
 
+    # 2. Personal Attempts
     attempts_qs = Attempt.objects.filter(
         user=request.user,
         is_correct=False,
@@ -40,21 +49,38 @@ def dashboard(request):
     fail_events = []
     for ch_id, attempts in grouped_attempts.items():
         if not attempts: continue
+
         challenge = attempts[0].challenge
         limit = challenge.max_attempts
+
         if len(attempts) >= limit:
             locking_attempt = attempts[limit - 1]
             fail_events.append(locking_attempt)
 
+    # 3. Combine lists
     activity_list = []
+
     for s in solves_qs:
-        activity_list.append(
-            {'type': 'solve', 'user': s.user, 'challenge': s.challenge, 'date': s.date, 'sort_date': s.date})
+        activity_list.append({
+            'type': 'solve',
+            'user': s.user,
+            'challenge': s.challenge,
+            'date': s.date,
+            'sort_date': s.date
+        })
+
     for f in fail_events:
-        activity_list.append(
-            {'type': 'fail', 'user': f.user, 'challenge': f.challenge, 'date': f.timestamp, 'sort_date': f.timestamp})
+        activity_list.append({
+            'type': 'fail',
+            'user': f.user,
+            'challenge': f.challenge,
+            'date': f.timestamp,
+            'sort_date': f.timestamp
+        })
 
     activity_log = sorted(activity_list, key=lambda x: x['sort_date'], reverse=True)[:10]
+
+    # Check for mentor/admin
     is_mentor = request.user.is_superuser or request.user.groups.filter(name='Mentors').exists()
 
     context = {
@@ -72,17 +98,36 @@ def challenges_view(request):
     challenges = Challenge.objects.filter(is_active=True).select_related('category')
     categories_qs = Category.objects.filter(challenges__is_active=True).distinct()
 
+    # Check Timer
+    lesson_settings = LessonSettings.get_settings()
+    is_hard_deadline = lesson_settings.is_hard_deadline_passed()
+
+    # Pass deadline timestamps for JS countdown
+    hard_deadline_iso = None
+    if lesson_settings.hard_deadline:
+        hard_deadline_iso = lesson_settings.hard_deadline.isoformat()
+
+    soft_deadline_iso = None
+    # FIX: Use end_time (model field) instead of soft_deadline
+    if lesson_settings.end_time:
+        soft_deadline_iso = lesson_settings.end_time.isoformat()
+
     categories_data = {}
     for cat in categories_qs:
-        categories_data[cat.name] = {'name': cat.name, 'icon': 'folder'}
+        categories_data[cat.name] = {
+            'name': cat.name,
+            'icon': 'folder'
+        }
 
     user_solves_ids = set(Solve.objects.filter(user=request.user).values_list('challenge_id', flat=True))
+
     user_attempts_map = {}
     attempts_qs = Attempt.objects.filter(user=request.user).values('challenge_id').annotate(count=Count('id'))
     for item in attempts_qs:
         user_attempts_map[item['challenge_id']] = item['count']
 
     challenges_data = []
+
     for c in challenges:
         solves_list = [{
             'user': s.user.username,
@@ -92,8 +137,13 @@ def challenges_view(request):
 
         is_solved = c.id in user_solves_ids
         attempts_count = user_attempts_map.get(c.id, 0)
+
         is_failed = False
         if c.max_attempts > 0 and attempts_count >= c.max_attempts and not is_solved:
+            is_failed = True
+
+        # If hard deadline passed and not solved, mark as failed (locked)
+        if is_hard_deadline and not is_solved:
             is_failed = True
 
         c_dict = {
@@ -116,15 +166,20 @@ def challenges_view(request):
     context = {
         'categories': categories_qs,
         'categories_json': json.dumps(categories_data),
-        'challenges_data': challenges_data
+        'challenges_data': challenges_data,
+        'is_hard_deadline': is_hard_deadline,
+        'hard_deadline_iso': hard_deadline_iso,
+        'soft_deadline_iso': soft_deadline_iso,  # Now correctly populated from end_time
     }
     return render(request, 'challenges.html', context)
 
 
-def _get_scoreboard_data(current_user):
-    """Вспомогательная функция для сбора данных скорборда"""
+@login_required
+def scoreboard(request):
+    # Filter: exclude superusers and mentors
     student_users = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors')
 
+    # 1. Top 10 for chart
     top_users_qs = student_users.annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         flags_count=Count('solves')
@@ -132,15 +187,18 @@ def _get_scoreboard_data(current_user):
 
     top_users_list = list(top_users_qs)
 
-    # Проверка: является ли текущий пользователь студентом
-    is_student = not current_user.is_superuser and not current_user.groups.filter(name='Mentors').exists()
+    # Add current user to chart if not in top 10
+    is_current_user_student = not request.user.is_superuser and not request.user.groups.filter(name='Mentors').exists()
 
-    if is_student and current_user.is_authenticated and current_user not in top_users_list:
-        current_user_points = \
-        Solve.objects.filter(user=current_user).aggregate(total=Coalesce(Sum('challenge__points'), 0))['total']
+    if is_current_user_student and request.user.is_authenticated and request.user not in top_users_list:
+        current_user_points = Solve.objects.filter(user=request.user).aggregate(
+            total=Coalesce(Sum('challenge__points'), 0)
+        )['total']
+
         if current_user_points > 0:
-            top_users_list.append(current_user)
+            top_users_list.append(request.user)
 
+    # 2. Top 50 list
     all_users_qs = student_users.annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         flags_count=Count('solves')
@@ -153,23 +211,29 @@ def _get_scoreboard_data(current_user):
             'user': u.username,
             'points': u.total_points,
             'solved': u.flags_count,
-            'isMe': u == current_user,
+            'isMe': u == request.user,
             'avatar': u.avatar_url
         })
 
     graph_data = {'datasets': []}
+
     first_solve_ever = Solve.objects.filter(user__in=student_users).aggregate(Min('date'))['date__min']
     global_start_time = first_solve_ever if first_solve_ever else timezone.now()
-    colors = ['#9fef00', '#00d2ff', '#ff0055', '#ffe600', '#aa00ff', '#ff6600', '#00ffaa', '#ff00aa', '#0066ff',
-              '#ccff00']
+
+    colors = [
+        '#9fef00', '#00d2ff', '#ff0055', '#ffe600', '#aa00ff',
+        '#ff6600', '#00ffaa', '#ff00aa', '#0066ff', '#ccff00'
+    ]
 
     for i, user in enumerate(top_users_list):
         solves = Solve.objects.filter(user=user).select_related('challenge').order_by('date')
-        if not solves.exists(): continue
+        if not solves.exists():
+            continue
 
         color = colors[i % len(colors)]
         data_points = [{'x': 0, 'y': 0}]
         current_score = 0
+
         for solve in solves:
             current_score += solve.challenge.points
             time_delta = solve.date - global_start_time
@@ -194,28 +258,18 @@ def _get_scoreboard_data(current_user):
             'stepped': 'after'
         })
 
-    return leaderboard_data, graph_data
-
-
-@login_required
-def scoreboard(request):
-    leaderboard_data, graph_data = _get_scoreboard_data(request.user)
-    context = {'leaderboard_data': leaderboard_data, 'graph_data': graph_data}
+    context = {
+        'leaderboard_data': leaderboard_data,
+        'graph_data': graph_data
+    }
     return render(request, 'scoreboard.html', context)
 
 
 @login_required
-def scoreboard_api(request):
-    """API для обновления данных графика и таблицы"""
-    leaderboard_data, graph_data = _get_scoreboard_data(request.user)
-    return JsonResponse({
-        'leaderboard': leaderboard_data,
-        'graph': graph_data
-    })
-
-
-@login_required
 def challenge_solves_api(request, challenge_id):
+    """
+    API for live updates.
+    """
     challenge = get_object_or_404(Challenge, id=challenge_id)
     if not challenge.is_active:
         return JsonResponse({'solves': []})
@@ -230,6 +284,30 @@ def challenge_solves_api(request, challenge_id):
     return JsonResponse({'solves': data})
 
 
+@login_required
+def lesson_status_api(request):
+    """
+    API для проверки статуса урока (таймера) в реальном времени.
+    """
+    lesson_settings = LessonSettings.get_settings()
+    is_hard_deadline = lesson_settings.is_hard_deadline_passed()
+
+    hard_deadline_iso = None
+    if lesson_settings.hard_deadline:
+        hard_deadline_iso = lesson_settings.hard_deadline.isoformat()
+
+    soft_deadline_iso = None
+    # FIX: Use end_time (model field) instead of soft_deadline
+    if lesson_settings.end_time:
+        soft_deadline_iso = lesson_settings.end_time.isoformat()
+
+    return JsonResponse({
+        'is_hard_deadline': is_hard_deadline,
+        'hard_deadline': hard_deadline_iso,
+        'soft_deadline': soft_deadline_iso  # Correctly populated
+    })
+
+
 @require_POST
 @login_required
 def submit_flag(request):
@@ -237,7 +315,15 @@ def submit_flag(request):
         data = json.loads(request.body)
         challenge_id = data.get('challenge_id')
         flag_input = data.get('flag')
+
         challenge = get_object_or_404(Challenge, id=challenge_id, is_active=True)
+
+        # Check Timer
+        lesson_settings = LessonSettings.get_settings()
+        if lesson_settings.is_hard_deadline_passed():
+            return JsonResponse(
+                {'status': 'error', 'message': 'Lesson time is over! Submissions closed.', 'challenge_failed': True})
+
         attempts_count = Attempt.objects.filter(user=request.user, challenge=challenge).count()
 
         if challenge.max_attempts > 0 and attempts_count >= challenge.max_attempts:
@@ -248,7 +334,13 @@ def submit_flag(request):
             return JsonResponse({'status': 'error', 'message': 'Already solved!'})
 
         is_correct = (flag_input == challenge.flag)
-        Attempt.objects.create(user=request.user, challenge=challenge, flag_input=flag_input, is_correct=is_correct)
+
+        Attempt.objects.create(
+            user=request.user,
+            challenge=challenge,
+            flag_input=flag_input,
+            is_correct=is_correct
+        )
 
         if is_correct:
             Solve.objects.create(user=request.user, challenge=challenge)
@@ -257,10 +349,16 @@ def submit_flag(request):
             new_attempts_count = attempts_count + 1
             challenge_failed = False
             message = 'Incorrect flag'
+
             if challenge.max_attempts > 0 and new_attempts_count >= challenge.max_attempts:
                 challenge_failed = True
                 message = 'Incorrect flag. Max attempts reached. Task locked.'
-            return JsonResponse({'status': 'error', 'message': message, 'challenge_failed': challenge_failed})
+
+            return JsonResponse({
+                'status': 'error',
+                'message': message,
+                'challenge_failed': challenge_failed
+            })
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

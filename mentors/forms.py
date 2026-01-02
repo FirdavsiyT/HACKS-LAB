@@ -1,5 +1,6 @@
 from django import forms
 from pages.models import Challenge, Category
+from .models import LessonSettings
 
 class ChallengeForm(forms.ModelForm):
     class Meta:
@@ -23,3 +24,21 @@ class CategoryForm(forms.ModelForm):
         widgets = {
             'name': forms.TextInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none', 'placeholder': 'e.g. Web Security'}),
         }
+
+class TimerSettingsForm(forms.ModelForm):
+    duration_minutes = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label="Duration (minutes)",
+        widget=forms.NumberInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none', 'placeholder': '45'})
+    )
+    delay_minutes = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="Overtime Delay (minutes)",
+        widget=forms.NumberInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none', 'placeholder': '10'})
+    )
+
+    class Meta:
+        model = LessonSettings
+        fields = []

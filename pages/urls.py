@@ -10,5 +10,6 @@ urlpatterns = [
     # APIs
     path('api/submit_flag/', views.submit_flag, name='submit_flag'),
     path('api/challenge/<int:challenge_id>/solves/', views.challenge_solves_api, name='challenge_solves_api'),
-    path('api/scoreboard/', views.scoreboard_api, name='scoreboard_api'),  # Новый
+    path('api/scoreboard/', views.scoreboard, name='scoreboard_api'),  # Новый
+    path('api/lesson/status/', views.lesson_status_api, name='lesson_status_api'),
 ]

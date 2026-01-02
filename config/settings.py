@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-change-me-please-super-secret-key-hacklabs'
 
 # ВАЖНО: Для PythonAnywhere лучше оставить False, но для локального теста 404 можно True
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -83,7 +83,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
+USE_I18N = True
+USE_L10N = True
 USE_I18N = True
 USE_TZ = True
 

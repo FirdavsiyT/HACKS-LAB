@@ -11,6 +11,7 @@ urlpatterns = [
     path('challenges/new/', views.challenge_create, name='challenge_create'),
     path('challenges/bulk_action/', views.bulk_challenges_action, name='bulk_challenges_action'),
     path('challenges/disable_all/', views.disable_all_challenges, name='disable_all_challenges'),
+    path('challenges/export/docx/', views.export_challenges_docx, name='export_challenges_docx'), # <-- NEW DOCX EXPORT
 
     path('challenges/<int:pk>/edit/', views.challenge_edit, name='challenge_edit'),
     path('challenges/<int:pk>/delete/', views.challenge_delete, name='challenge_delete'),
@@ -24,6 +25,6 @@ urlpatterns = [
 
     # Users & System Control
     path('users/', views.users_list, name='users_list'),
-    path('users/export/', views.export_users_csv, name='export_users_csv'),  # <-- НОВЫЙ МАРШРУТ
+    path('users/export/', views.export_users_csv, name='export_users_csv'),
     path('system/reset/', views.reset_platform, name='reset_platform'),
 ]
