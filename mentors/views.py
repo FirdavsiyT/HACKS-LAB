@@ -1,6 +1,10 @@
 import csv
 import codecs
-from django.http import HttpResponse
+import uuid
+import json
+from django import forms
+from django.core.cache import cache
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -36,6 +40,17 @@ def mentor_required(view_func):
     return _wrapped_view
 
 
+# --- FORMS ---
+
+class MentorMessageForm(forms.Form):
+    # Field is validated but rendered manually in template for Avatars
+    recipient = forms.CharField(widget=forms.HiddenInput())
+    message = forms.CharField(widget=forms.Textarea(attrs={
+        'rows': 4,
+        'class': 'w-full bg-[#1a1c23] border border-[#2c2f3b] rounded p-3 text-white focus:border-[#9fef00] focus:outline-none transition-colors'
+    }), label="Message Content")
+
+
 # --- VIEWS ---
 
 @login_required
@@ -50,7 +65,6 @@ def dashboard(request):
     # Timer logic
     lesson_settings = LessonSettings.get_settings()
 
-    # Pre-fill form with current duration if active
     initial_data = {}
     if lesson_settings.start_time and lesson_settings.end_time:
         duration = (lesson_settings.end_time - lesson_settings.start_time).total_seconds() / 60
@@ -106,6 +120,81 @@ def dashboard(request):
     return render(request, 'mentors/dashboard.html', context)
 
 
+# --- MESSAGING SYSTEM (With Avatar Support) ---
+
+@login_required
+@mentor_required
+def send_message(request):
+    """
+    View for mentors to send ephemeral messages via Cache.
+    """
+    # Fetch ALL active users (Students, Mentors, Admins)
+    users_list = User.objects.filter(is_active=True).order_by('username')
+
+    if request.method == 'POST':
+        form = MentorMessageForm(request.POST)
+        if form.is_valid():
+            recipient = form.cleaned_data['recipient']
+            content = form.cleaned_data['message']
+            msg_id = str(uuid.uuid4())
+
+            message_data = {
+                'id': msg_id,
+                'text': content,
+                'timestamp': timezone.now().timestamp(),
+                'sender': request.user.username
+            }
+
+            if recipient == 'all':
+                broadcasts = cache.get('hacklabs_broadcasts', [])
+                broadcasts.append(message_data)
+                if len(broadcasts) > 20:
+                    broadcasts = broadcasts[-20:]
+                cache.set('hacklabs_broadcasts', broadcasts, timeout=120)
+                messages.success(request, "Broadcast sent to ALL users!")
+            else:
+                user_key = f'hacklabs_msgs_{recipient}'
+                user_msgs = cache.get(user_key, [])
+                user_msgs.append(message_data)
+                cache.set(user_key, user_msgs, timeout=300)
+                messages.success(request, "Message sent to user.")
+
+            return redirect('mentors:send_message')
+    else:
+        # Set default to 'all'
+        form = MentorMessageForm(initial={'recipient': 'all'})
+
+    return render(request, 'mentors/message_form.html', {
+        'form': form,
+        'title': 'Send Message',
+        'users_list': users_list  # Renamed from 'students' to 'users_list'
+    })
+
+
+@login_required
+def check_messages(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'messages': []})
+
+    new_messages = []
+
+    user_key = f'hacklabs_msgs_{request.user.id}'
+    personal_msgs = cache.get(user_key, [])
+
+    if personal_msgs:
+        for msg in personal_msgs:
+            msg['type'] = 'personal'
+            new_messages.append(msg)
+        cache.delete(user_key)
+
+    broadcasts = cache.get('hacklabs_broadcasts', [])
+    for msg in broadcasts:
+        msg['type'] = 'broadcast'
+        new_messages.append(msg)
+
+    return JsonResponse({'messages': new_messages})
+
+
 # --- CHALLENGES ---
 
 @login_required
@@ -146,16 +235,11 @@ def challenges_list(request):
 @login_required
 @mentor_required
 def export_challenges_docx(request):
-    """
-    Generates a .docx file with all ACTIVE challenges using the specified template.
-    Requires: pip install python-docx
-    """
     if Document is None:
         messages.error(request,
                        "Library 'python-docx' is missing. Please install it on the server: pip install python-docx")
         return redirect('mentors:challenges_list')
 
-    # Get active challenges
     challenges = Challenge.objects.filter(is_active=True).select_related('category').order_by('category__name',
                                                                                               'points')
 
@@ -164,23 +248,18 @@ def export_challenges_docx(request):
         return redirect('mentors:challenges_list')
 
     document = Document()
-
-    # Document Title
     main_title = document.add_heading('HackLabs Active Challenges', 0)
-    main_title.alignment = 1  # Center
+    main_title.alignment = 1
 
     timestamp = timezone.now().strftime('%Y-%m-%d %H:%M')
     p_date = document.add_paragraph(f"Exported on: {timestamp}")
     p_date.alignment = 1
-
     document.add_paragraph("-" * 50).alignment = 1
 
     for challenge in challenges:
-        # Challenge Block
         p = document.add_paragraph()
         p.space_after = Pt(12)
 
-        # Helper to add bold label + text
         def add_line(label, text):
             run_label = p.add_run(f"{label} ")
             run_label.bold = True
@@ -193,12 +272,10 @@ def export_challenges_docx(request):
         add_line("Flag:", challenge.flag)
         add_line("Award:", f"{challenge.points} Pts")
 
-        # Visual Separator
         sep = document.add_paragraph("_" * 30)
-        sep.alignment = 1  # Center
+        sep.alignment = 1
         sep.space_after = Pt(24)
 
-    # HTTP Response
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     filename = f"challenges_export_{timezone.now().strftime('%Y%m%d')}.docx"
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -351,17 +428,14 @@ def category_delete(request, pk):
 @login_required
 @mentor_required
 def users_list(request):
-    # 1. Calculate max possible score
     max_points_data = Challenge.objects.filter(is_active=True).aggregate(total=Sum('points'))
     max_possible_points = max_points_data['total'] if max_points_data['total'] is not None else 0
 
-    # 2. Get students (EXCLUDING admins and mentors)
     users_qs = User.objects.filter(is_superuser=False).exclude(groups__name='Mentors').annotate(
         total_points=Coalesce(Sum('solves__challenge__points'), 0),
         solved_count=Count('solves')
     ).order_by('-total_points')
 
-    # 3. Calculate percentage for each student
     users = []
     for user in users_qs:
         if max_possible_points > 0:
@@ -380,9 +454,6 @@ def users_list(request):
 @login_required
 @mentor_required
 def export_users_csv(request):
-    """
-    Export student results to CSV.
-    """
     response = HttpResponse(content_type='text/csv')
     timestamp = timezone.now().strftime('%Y-%m-%d_%H-%M')
     response['Content-Disposition'] = f'attachment; filename="hacklabs_results_{timestamp}.csv"'

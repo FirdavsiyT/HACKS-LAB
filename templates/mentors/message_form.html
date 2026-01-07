@@ -1,0 +1,190 @@
+{% extends 'mentors/base_mentor.html' %}
+
+{% block mentor_content %}
+<div class="max-w-3xl mx-auto fade-in">
+    <div class="glass-panel rounded-xl border border-[#2c2f3b] overflow-hidden">
+        <div class="p-6 border-b border-[#2c2f3b] bg-[#1a1c23]">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <i data-lucide="send" class="w-6 h-6 text-[#9fef00]"></i>
+                Send Notification
+            </h2>
+            <p class="text-sm text-[#5a6278] mt-1">
+                Send ephemeral messages to students. These will appear instantly but are not stored in the database.
+            </p>
+        </div>
+
+        <form method="post" class="p-6 space-y-6">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="space-y-4">
+                <!-- CUSTOM RECIPIENT SELECTOR -->
+                <div class="relative" id="custom-select-container">
+                    <label class="block text-sm font-bold text-[#c5c6c7] mb-2 uppercase tracking-wide">
+                        Recipient
+                    </label>
+
+                    <!-- Hidden Real Input -->
+                    {{ form.recipient }}
+
+                    <!-- Trigger Button -->
+                    <button type="button" id="select-trigger" onclick="toggleDropdown()" class="w-full bg-[#1a1c23] border border-[#2c2f3b] rounded-lg p-3 flex items-center justify-between hover:border-[#9fef00]/50 transition-colors group focus:outline-none focus:border-[#9fef00]">
+                        <div class="flex items-center gap-3" id="selected-display">
+                            <!-- Default Content (Will be replaced by JS) -->
+                            <div class="w-8 h-8 rounded bg-[#9fef00]/20 text-[#9fef00] flex items-center justify-center font-bold shrink-0">
+                                <i data-lucide="radio" class="w-4 h-4"></i>
+                            </div>
+                            <span class="text-white font-medium">📢 BROADCAST TO ALL</span>
+                        </div>
+                        <i data-lucide="chevron-down" class="w-4 h-4 text-[#5a6278] group-hover:text-white transition-colors" id="dropdown-arrow"></i>
+                    </button>
+
+                    <!-- Dropdown Menu -->
+                    <div id="select-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-[#1a1c23] border border-[#2c2f3b] rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.5)] z-50 max-h-64 overflow-y-auto custom-scrollbar opacity-0 transform translate-y-[-10px] transition-all duration-200">
+
+                        <!-- Option 1: Broadcast -->
+                        <div onclick="selectRecipient('all', '📢 BROADCAST TO ALL', null)" class="p-3 flex items-center gap-3 hover:bg-[#9fef00]/10 cursor-pointer transition-colors border-b border-[#2c2f3b] group">
+                            <div class="w-8 h-8 rounded bg-[#9fef00]/10 text-[#9fef00] flex items-center justify-center group-hover:bg-[#9fef00] group-hover:text-black transition-colors shrink-0">
+                                <i data-lucide="radio" class="w-4 h-4"></i>
+                            </div>
+                            <span class="text-[#c5c6c7] group-hover:text-white font-medium transition-colors">📢 BROADCAST TO ALL</span>
+                        </div>
+
+                        <!-- Users List (All Active Users) -->
+                        {% for user_obj in users_list %}
+                        <div onclick="selectRecipient('{{ user_obj.id }}', '{{ user_obj.username }}', '{{ user_obj.avatar_url }}')" class="p-3 flex items-center gap-3 hover:bg-white/5 cursor-pointer transition-colors group">
+                            <!-- Avatar -->
+                            <div class="w-8 h-8 rounded overflow-hidden bg-[#2c2f3b] relative border border-transparent group-hover:border-[#9fef00] transition-colors shrink-0">
+                                {% if user_obj.avatar_url %}
+                                    <img src="{{ user_obj.avatar_url }}" alt="{{ user_obj.username }}" class="w-full h-full object-cover">
+                                {% else %}
+                                    <div class="w-full h-full flex items-center justify-center text-[10px] text-[#5a6278] font-mono font-bold group-hover:text-[#9fef00]">
+                                        {{ user_obj.username|first|upper }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex flex-col">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[#c5c6c7] group-hover:text-white font-medium transition-colors leading-none">{{ user_obj.username }}</span>
+                                    {% if user_obj.is_superuser %}
+                                        <span class="text-[9px] font-bold bg-red-500/20 text-red-500 px-1 py-0.5 rounded border border-red-500/30 leading-none">ADMIN</span>
+                                    {% elif user_obj.groups.all.0.name == 'Mentors' %}
+                                        <!-- UPDATED: Yellow Badge for Mentors -->
+                                        <span class="text-[9px] font-bold bg-yellow-500/10 text-yellow-500 px-1 py-0.5 rounded border border-yellow-500/30 leading-none">MENTOR</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-[10px] text-[#5a6278] group-hover:text-[#9ca3af] mt-1 font-mono">ID: {{ user_obj.id }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="p-4 text-center text-[#5a6278] text-sm">
+                            No active users found.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Message Field -->
+                <div>
+                    <label class="block text-sm font-bold text-[#c5c6c7] mb-2 uppercase tracking-wide">
+                        Message Content
+                    </label>
+                    {{ form.message }}
+                    {% if form.message.errors %}
+                        <p class="mt-1 text-sm text-red-500">{{ form.message.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="pt-4 border-t border-[#2c2f3b] flex justify-end">
+                <button type="submit" class="px-6 py-2.5 rounded bg-[#9fef00] text-black font-bold hover:bg-[#8cd600] transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(159,239,0,0.2)]">
+                    <i data-lucide="send" class="w-4 h-4 fill-current"></i> SEND MESSAGE
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const dropdown = document.getElementById('select-dropdown');
+    const input = document.getElementById('id_recipient');
+    const display = document.getElementById('selected-display');
+    const arrow = document.getElementById('dropdown-arrow');
+
+    function toggleDropdown() {
+        if (dropdown.classList.contains('hidden')) {
+            // Show
+            dropdown.classList.remove('hidden');
+            // Small delay for animation
+            setTimeout(() => {
+                dropdown.classList.remove('opacity-0', 'translate-y-[-10px]');
+            }, 10);
+            arrow.style.transform = 'rotate(180deg)';
+        } else {
+            closeDropdown();
+        }
+    }
+
+    function closeDropdown() {
+        dropdown.classList.add('opacity-0', 'translate-y-[-10px]');
+        arrow.style.transform = 'rotate(0deg)';
+        setTimeout(() => {
+            dropdown.classList.add('hidden');
+        }, 200);
+    }
+
+    function selectRecipient(id, name, avatarUrl) {
+        // Update hidden input
+        input.value = id;
+
+        // Update display
+        let iconHtml = '';
+        if (id === 'all') {
+            iconHtml = `
+                <div class="w-8 h-8 rounded bg-[#9fef00]/20 text-[#9fef00] flex items-center justify-center font-bold shrink-0">
+                    <i data-lucide="radio" class="w-4 h-4"></i>
+                </div>
+            `;
+        } else {
+            if (avatarUrl && avatarUrl !== 'None' && avatarUrl !== '') {
+                iconHtml = `
+                    <div class="w-8 h-8 rounded overflow-hidden bg-[#2c2f3b] border border-[#9fef00] shrink-0">
+                        <img src="${avatarUrl}" class="w-full h-full object-cover">
+                    </div>
+                `;
+            } else {
+                const initial = name.charAt(0).toUpperCase();
+                iconHtml = `
+                    <div class="w-8 h-8 rounded bg-[#2c2f3b] flex items-center justify-center text-[#9fef00] font-bold border border-[#9fef00] shrink-0">
+                        ${initial}
+                    </div>
+                `;
+            }
+        }
+
+        display.innerHTML = `
+            ${iconHtml}
+            <span class="text-white font-medium">${name}</span>
+        `;
+
+        // Re-init icons for the new HTML
+        lucide.createIcons();
+        closeDropdown();
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function(event) {
+        const container = document.getElementById('custom-select-container');
+        if (!container.contains(event.target)) {
+            if (!dropdown.classList.contains('hidden')) {
+                closeDropdown();
+            }
+        }
+    });
+</script>
+{% endblock %}

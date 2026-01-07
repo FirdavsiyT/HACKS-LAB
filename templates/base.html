@@ -207,31 +207,37 @@
         </div>
     </footer>
 
-    {% if messages %}
-        <div class="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
+    <!-- TOAST CONTAINER (UPDATED: TOP CENTER & LARGE) -->
+    <div id="toast-container" class="fixed top-8 left-0 right-0 z-[100] flex flex-col items-center gap-4 pointer-events-none px-4">
+        {% if messages %}
             {% for message in messages %}
-            <div class="toast-message pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg transform transition-all duration-500 translate-y-0 opacity-100 backdrop-blur-md
+            <div class="toast-message pointer-events-auto relative w-full max-w-3xl rounded-xl border-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-5 p-6 transform transition-all duration-500 -translate-y-full opacity-0 backdrop-blur-md mb-2
                 {% if message.tags == 'success' %}
-                    bg-[#9fef00]/10 border-[#9fef00] text-[#9fef00] shadow-[0_0_15px_rgba(159,239,0,0.15)]
+                    bg-[#9fef00]/10 border-[#9fef00] text-[#9fef00]
                 {% elif message.tags == 'error' %}
-                    bg-red-500/10 border-red-500 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.15)]
+                    bg-red-500/10 border-red-500 text-red-500
                 {% else %}
-                    bg-[#2c2f3b]/90 border-[#5a6278] text-white
+                    bg-[#2c2f3b]/95 border-[#5a6278] text-white
                 {% endif %}" role="alert">
 
+                <div class="p-3 rounded-full bg-white/5 shrink-0">
                 {% if message.tags == 'success' %}
-                    <i data-lucide="check-circle" class="w-5 h-5"></i>
+                    <i data-lucide="check-circle" class="w-8 h-8"></i>
                 {% elif message.tags == 'error' %}
-                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
                 {% else %}
-                    <i data-lucide="info" class="w-5 h-5"></i>
+                    <i data-lucide="info" class="w-8 h-8"></i>
                 {% endif %}
+                </div>
 
-                <span class="font-mono text-xs font-bold uppercase tracking-wider">{{ message }}</span>
+                <div class="flex-1">
+                    <h4 class="font-bold text-xs opacity-70 uppercase tracking-widest mb-1">System Notification</h4>
+                    <p class="font-mono text-xl font-bold leading-tight">{{ message }}</p>
+                </div>
             </div>
             {% endfor %}
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
 
     <script>
         lucide.createIcons();
@@ -245,15 +251,114 @@
             });
         }
 
+        // --- Toast Logic (UPDATED FOR LARGE TOP NOTIFICATIONS) ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bgClass = 'bg-[#2c2f3b]/95 border-[#5a6278] text-white';
+            let icon = 'info';
+            let title = 'System Notification';
+
+            if (type === 'success' || type === 'personal') {
+                 bgClass = 'bg-[#9fef00]/10 border-[#9fef00] text-[#9fef00] shadow-[0_0_30px_rgba(159,239,0,0.2)]';
+                 icon = 'check-circle';
+                 title = 'Personal Message';
+            } else if (type === 'broadcast') {
+                 bgClass = 'bg-[#00d2ff]/10 border-[#00d2ff] text-[#00d2ff] shadow-[0_0_30px_rgba(0,210,255,0.2)]';
+                 icon = 'radio';
+                 title = 'Global Broadcast';
+            } else if (type === 'error') {
+                 bgClass = 'bg-red-500/10 border-red-500 text-red-500 shadow-[0_0_30px_rgba(239,68,68,0.2)]';
+                 icon = 'alert-triangle';
+                 title = 'System Alert';
+            }
+
+            // Start hidden above (-translate-y-full)
+            toast.className = `toast-message pointer-events-auto relative w-full max-w-3xl rounded-xl border-2 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-5 p-6 transform transition-all duration-500 -translate-y-full opacity-0 backdrop-blur-md mb-2 ${bgClass}`;
+
+            toast.innerHTML = `
+                <div class="p-3 rounded-full bg-white/5 shrink-0">
+                    <i data-lucide="${icon}" class="w-8 h-8"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-bold text-xs opacity-70 uppercase tracking-widest mb-1">${title}</h4>
+                    <p class="font-mono text-xl font-bold leading-tight break-words">${message}</p>
+                </div>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate In (Slide Down)
+            requestAnimationFrame(() => {
+                toast.classList.remove('-translate-y-full', 'opacity-0');
+            });
+
+            // Remove after 7 seconds (Increased time for larger text)
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-full'); // Slide back up
+                setTimeout(() => toast.remove(), 500);
+            }, 7000);
+        }
+
+        // Handle initial server-side toasts
         document.addEventListener('DOMContentLoaded', () => {
             const toasts = document.querySelectorAll('.toast-message');
             toasts.forEach((toast, index) => {
                 setTimeout(() => {
-                    toast.classList.add('opacity-0', 'translate-y-4');
+                    toast.classList.remove('-translate-y-full', 'opacity-0'); // Show
+                }, 100 + (index * 200));
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', '-translate-y-full'); // Hide
                     setTimeout(() => toast.remove(), 500);
-                }, 4000 + (index * 500));
+                }, 7000 + (index * 500));
             });
         });
+
+        // --- Real-time Messaging Polling ---
+        {% if user.is_authenticated %}
+
+        let seenMessages = new Set();
+        try {
+            const stored = sessionStorage.getItem('seen_broadcasts');
+            if (stored) {
+                seenMessages = new Set(JSON.parse(stored));
+            }
+        } catch(e) {}
+
+        function checkMessages() {
+            // Note: Use the named URL in Django templates
+            fetch("{% url 'mentors:check_messages' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.messages && data.messages.length > 0) {
+                    let hasNewBroadcasts = false;
+
+                    data.messages.forEach(msg => {
+                        if (msg.type === 'broadcast') {
+                            if (seenMessages.has(msg.id)) return;
+                            seenMessages.add(msg.id);
+                            hasNewBroadcasts = true;
+                            showToast(msg.text, 'broadcast');
+                        } else {
+                            showToast(msg.text, 'personal');
+                        }
+                    });
+
+                    if (hasNewBroadcasts) {
+                        sessionStorage.setItem('seen_broadcasts', JSON.stringify([...seenMessages]));
+                    }
+                }
+            })
+            .catch(err => console.error("Msg poll error", err));
+        }
+
+        // Poll every 5 seconds
+        setInterval(checkMessages, 5000);
+
+        {% endif %}
     </script>
     {% block scripts %}{% endblock %}
 </body>
