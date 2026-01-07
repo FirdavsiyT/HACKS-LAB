@@ -1,0 +1,82 @@
+{% extends 'mentors/base_mentor.html' %}
+
+{% block mentor_content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <h2 class="text-2xl font-bold text-white tracking-tight">Lesson Templates</h2>
+        <p class="text-[#9ca3af] text-sm mt-1">Create groups of challenges for specific lessons.</p>
+    </div>
+    <a href="{% url 'mentors:template_create' %}" class="flex items-center gap-2 bg-[#9fef00] text-black px-4 py-2 rounded font-bold hover:bg-[#8cd600] transition-colors shadow-[0_0_15px_rgba(159,239,0,0.3)]">
+        <i data-lucide="plus" class="w-4 h-4"></i> New Template
+    </a>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% for template in templates %}
+    <div class="glass-panel border border-[#2c2f3b] rounded-xl overflow-hidden flex flex-col hover:border-[#9fef00]/30 transition-colors">
+        <div class="p-6 flex-1">
+            <div class="flex items-start justify-between mb-2">
+                <h3 class="text-xl font-bold text-white">{{ template.title }}</h3>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'mentors:template_edit' template.id %}" class="p-1.5 text-[#5a6278] hover:text-white transition-colors" title="Edit">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                    </a>
+                    <form method="post" action="{% url 'mentors:template_delete' template.id %}" onsubmit="return confirm('Delete this template?');">
+                        {% csrf_token %}
+                        <button type="submit" class="p-1.5 text-[#5a6278] hover:text-red-500 transition-colors" title="Delete">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            {% if template.description %}
+            <p class="text-sm text-[#9ca3af] mb-4 line-clamp-2">{{ template.description }}</p>
+            {% endif %}
+
+            <div class="flex items-center gap-4 text-xs font-mono text-[#5a6278] border-t border-[#2c2f3b] pt-4">
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="list" class="w-3 h-3"></i>
+                    {{ template.task_count }} Tasks
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <i data-lucide="trophy" class="w-3 h-3"></i>
+                    {{ template.total_score }} Pts
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4 bg-[#1a1c23] border-t border-[#2c2f3b] grid grid-cols-3 gap-2">
+            <!-- Exclusive Start -->
+            <form method="post" action="{% url 'mentors:template_apply' template.id %}" class="col-span-1">
+                {% csrf_token %}
+                <button type="submit" name="action" value="exclusive" class="w-full flex items-center justify-center gap-2 py-2 rounded bg-white/5 hover:bg-[#9fef00] hover:text-black text-[#9fef00] text-xs font-bold transition-all border border-[#9fef00]/30 group" title="Hide all other challenges and enable these">
+                    <i data-lucide="rocket" class="w-3 h-3"></i> START LESSON
+                </button>
+            </form>
+
+            <!-- Enable -->
+            <form method="post" action="{% url 'mentors:template_apply' template.id %}" class="col-span-1">
+                {% csrf_token %}
+                <button type="submit" name="action" value="enable" class="w-full flex items-center justify-center gap-2 py-2 rounded bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all border border-white/10" title="Enable these challenges (keep others)">
+                    <i data-lucide="check" class="w-3 h-3"></i> ENABLE
+                </button>
+            </form>
+
+            <!-- Disable -->
+            <form method="post" action="{% url 'mentors:template_apply' template.id %}" class="col-span-1">
+                {% csrf_token %}
+                <button type="submit" name="action" value="disable" class="w-full flex items-center justify-center gap-2 py-2 rounded bg-white/5 hover:bg-red-500/20 hover:text-red-500 text-[#9ca3af] text-xs font-bold transition-all border border-white/10" title="Disable these challenges">
+                    <i data-lucide="x" class="w-3 h-3"></i> DISABLE
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-span-full py-12 text-center text-[#5a6278]">
+        <i data-lucide="layout-template" class="w-12 h-12 mx-auto mb-4 opacity-50"></i>
+        <p>No lesson templates created yet.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -31,6 +31,12 @@
                     <i data-lucide="folder" class="w-4 h-4"></i> Categories
                 </a>
 
+                <!-- NEW: Lesson Templates -->
+                <a href="{% url 'mentors:templates_list' %}"
+                   class="flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors {% if 'template' in request.resolver_match.url_name %}bg-[#9fef00]/10 text-[#9fef00] border border-[#9fef00]/20{% else %}text-[#9ca3af] hover:text-white hover:bg-white/5{% endif %}">
+                    <i data-lucide="layout-template" class="w-4 h-4"></i> Lesson Templates
+                </a>
+
                 <div class="pt-2 pb-1 px-3 text-[10px] font-bold text-[#5a6278] uppercase tracking-wider">Communication</div>
 
                 <a href="{% url 'mentors:send_message' %}"
