@@ -5,7 +5,7 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
-SECRET_KEY = 'django-insecure-change-me-please-super-secret-key-hacklabs'
+SECRET_KEY = ''
 
 DEBUG = False
 
