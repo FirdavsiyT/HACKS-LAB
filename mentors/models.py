@@ -2,6 +2,25 @@ from django.db import models
 from django.utils import timezone
 from pages.models import Challenge
 
+
+class LessonTemplate(models.Model):
+    title = models.CharField(max_length=100, verbose_name="Lesson Title")
+    description = models.TextField(blank=True, verbose_name="Description")
+    challenges = models.ManyToManyField(Challenge, related_name='templates', verbose_name="Challenges")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def challenges_count(self):
+        return self.challenges.count()
+
+    @property
+    def total_points(self):
+        return self.challenges.aggregate(total=models.Sum('points'))['total'] or 0
+
 class LessonSettings(models.Model):
     """
     Global settings for the current lesson/session.
@@ -33,26 +52,3 @@ class LessonSettings(models.Model):
             # If end_time is also not set, then no deadline
             return False if not self.end_time else timezone.now() > self.end_time
         return timezone.now() > self.hard_deadline
-
-
-class LessonTemplate(models.Model):
-    """
-    Модель для группировки задач в один урок/шаблон.
-    Позволяет быстро включать/выключать набор задач.
-    """
-    title = models.CharField(max_length=100, verbose_name="Lesson Title")
-    description = models.TextField(blank=True, verbose_name="Description")
-    challenges = models.ManyToManyField(Challenge, related_name='templates', verbose_name="Challenges")
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.title
-
-    @property
-    def challenges_count(self):
-        return self.challenges.count()
-
-    @property
-    def total_points(self):
-        return self.challenges.aggregate(total=models.Sum('points'))['total'] or 0

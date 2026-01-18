@@ -1,6 +1,6 @@
 from django import forms
 from pages.models import Challenge, Category
-from .models import LessonSettings
+from .models import LessonSettings, LessonTemplate
 
 class ChallengeForm(forms.ModelForm):
     class Meta:
@@ -42,3 +42,19 @@ class TimerSettingsForm(forms.ModelForm):
     class Meta:
         model = LessonSettings
         fields = []
+
+class LessonTemplateForm(forms.ModelForm):
+    challenges = forms.ModelMultipleChoiceField(
+        queryset=Challenge.objects.all().order_by('category__name', 'points'),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'accent-[#9fef00]'}),
+        required=False,
+        label="Select Challenges"
+    )
+
+    class Meta:
+        model = LessonTemplate
+        fields = ['title', 'description', 'challenges']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'w-full bg-[#1a1c23] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] focus:outline-none'}),
+            'description': forms.Textarea(attrs={'class': 'w-full bg-[#1a1c23] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] focus:outline-none', 'rows': 3}),
+        }

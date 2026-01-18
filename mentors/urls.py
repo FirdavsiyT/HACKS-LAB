@@ -23,19 +23,19 @@ urlpatterns = [
     path('categories/<int:pk>/edit/', views.category_edit, name='category_edit'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
 
-    # Lesson Templates (NEW)
-    path('templates/', views.templates_list, name='templates_list'),
-    path('templates/new/', views.template_create, name='template_create'),
-    path('templates/<int:pk>/edit/', views.template_edit, name='template_edit'),
-    path('templates/<int:pk>/delete/', views.template_delete, name='template_delete'),
-    path('templates/<int:pk>/apply/', views.template_apply, name='template_apply'),
-
     # Users & System Control
     path('users/', views.users_list, name='users_list'),
     path('users/export/', views.export_users_csv, name='export_users_csv'),
     path('system/reset/', views.reset_platform, name='reset_platform'),
 
-    # Messaging System
+    # Messaging System (New)
     path('messages/send/', views.send_message, name='send_message'),
     path('messages/check/', views.check_messages, name='check_messages'),
+
+    # Lesson Templates
+    path('templates/', views.templates_list, name='templates_list'),
+    path('templates/new/', views.template_create, name='template_create'),
+    path('templates/<int:pk>/edit/', views.template_edit, name='template_edit'),
+    path('templates/<int:pk>/delete/', views.template_delete, name='template_delete'),
+    path('templates/<int:pk>/apply/', views.template_apply, name='template_apply'),
 ]
