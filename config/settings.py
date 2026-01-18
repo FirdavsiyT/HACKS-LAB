@@ -7,8 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = 'django-insecure-change-me-please-super-secret-key-hacklabs'
 
-# ВАЖНО: Для PythonAnywhere лучше оставить False, но для локального теста 404 можно True
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
