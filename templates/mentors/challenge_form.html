@@ -15,7 +15,8 @@
         
         <form method="post" class="p-6 space-y-6">
             {% csrf_token %}
-            
+            {{ form.media }}
+
             {% if form.non_field_errors %}
                 <div class="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded text-sm">
                     {{ form.non_field_errors }}
@@ -59,7 +60,7 @@
 
                 <!-- Description -->
                 <div class="md:col-span-2 space-y-1">
-                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Description (Markdown supported)</label>
+                    <label class="text-xs font-bold text-[#5a6278] uppercase tracking-wider">Description</label>
                     {{ form.description }}
                 </div>
                 

@@ -132,7 +132,8 @@
             <div id="tab-overview">
 
                 <div class="p-5 rounded-xl bg-white/5 border border-white/10 backdrop-blur-lg mb-8 shadow-[inset_0_0_20px_rgba(255,255,255,0.02)]">
-                    <p id="modal-desc" class="text-[#9ca3af] text-sm leading-relaxed font-medium"></p>
+                    <!-- Changed from <p> to <div> and id is used for innerHTML -->
+                    <div id="modal-desc" class="text-[#9ca3af] text-sm leading-relaxed font-medium"></div>
                 </div>
 
                 <div id="modal-form" class="mb-8">
@@ -594,7 +595,8 @@
         const c = challenges.find(i => i.id === id);
         activeId = id;
         document.getElementById('modal-title').innerText = c.title;
-        document.getElementById('modal-desc').innerText = c.desc;
+        // USE innerHTML for CKEditor content
+        document.getElementById('modal-desc').innerHTML = c.desc;
         document.getElementById('modal-pts').innerText = c.points + ' Pts';
 
         const catName = categoriesMeta[c.category] ? categoriesMeta[c.category].name : c.category;

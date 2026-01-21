@@ -1,4 +1,6 @@
-from django.urls import path
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views
 
 app_name = 'mentors'
@@ -28,7 +30,7 @@ urlpatterns = [
     path('users/export/', views.export_users_csv, name='export_users_csv'),
     path('system/reset/', views.reset_platform, name='reset_platform'),
 
-    # Messaging System (New)
+    # Messaging System
     path('messages/send/', views.send_message, name='send_message'),
     path('messages/check/', views.check_messages, name='check_messages'),
 
@@ -38,4 +40,10 @@ urlpatterns = [
     path('templates/<int:pk>/edit/', views.template_edit, name='template_edit'),
     path('templates/<int:pk>/delete/', views.template_delete, name='template_delete'),
     path('templates/<int:pk>/apply/', views.template_apply, name='template_apply'),
+
+    # Summernote (Редактор)
+    path('summernote/', include('django_summernote.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -22,6 +22,7 @@ urlpatterns = [
     path('', include('pages.urls')),
     path('users/', include('users.urls')),
     path('mentors/', include('mentors.urls')),
+    path('summernote/', include('django_summernote.urls')),
 ]
 # Указываем Django использовать наши кастомные view для обработки ошибок
 handler404 = 'config.urls.custom_page_not_found_view'

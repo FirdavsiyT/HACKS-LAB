@@ -1,6 +1,7 @@
 from django import forms
 from pages.models import Challenge, Category
 from .models import LessonSettings, LessonTemplate
+from django_summernote.widgets import SummernoteWidget
 
 class ChallengeForm(forms.ModelForm):
     class Meta:
@@ -9,7 +10,7 @@ class ChallengeForm(forms.ModelForm):
         widgets = {
             'title': forms.TextInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none'}),
             'category': forms.Select(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none'}),
-            'description': forms.Textarea(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none', 'rows': 4}),
+            'description': SummernoteWidget(attrs={'summernote': {'width': '100%', 'height': '400px'}}),
             'points': forms.NumberInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none'}),
             'difficulty': forms.Select(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none'}),
             'flag': forms.TextInput(attrs={'class': 'w-full bg-[#13141b] border border-[#2c2f3b] rounded p-2 text-white focus:border-[#9fef00] outline-none font-mono'}),

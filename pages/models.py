@@ -1,10 +1,8 @@
 from django.db import models
 from django.conf import settings
 
-
 class Category(models.Model):
     name = models.CharField(max_length=100)
-    # slug, icon и order убраны, как в последней миграции
 
     class Meta:
         verbose_name_plural = "Categories"
@@ -28,7 +26,7 @@ class Challenge(models.Model):
     difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='Easy')
     flag = models.CharField(max_length=200)
     author = models.CharField(max_length=100, default="Admin")
-    max_attempts = models.PositiveIntegerField(default=0, help_text="0 = безлимитно")
+    max_attempts = models.PositiveIntegerField(default=0, help_text="0 = infinity")
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

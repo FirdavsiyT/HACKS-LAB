@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = 'django-insecure-change-me-please-super-secret-key-hacklabs'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -24,7 +24,37 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'pages.apps.PagesConfig',
     'mentors.apps.MentorsConfig',
+
+    #3rd party apps
+    'django_summernote',
 ]
+# Summernote
+SUMMERNOTE_THEME = 'bs4'
+
+SUMMERNOTE_CONFIG = {
+    'iframe': True,
+    'summernote': {
+        'width': '100%',
+        'height': '400',
+        'lang': 'en-US',
+        'toolbar': [
+            ['style', ['style']],
+            ['font', ['bold', 'italic', 'underline', 'clear', 'fontname', 'fontsize', 'color']],
+            ['para', ['ul', 'ol', 'paragraph', 'height']],
+            ['insert', ['link', 'picture', 'video', 'hr']],
+            ['view', ['fullscreen', 'codeview', 'help']],
+        ],
+    },
+    'css': (
+        '//cdnjs.cloudflare.com/ajax/libs/codemirror/5.40.0/theme/monokai.min.css',
+        '/static/css/summernote-dark.css',
+    ),
+    'codemirror': {
+        'theme': 'monokai',
+    },
+}
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -89,11 +119,9 @@ USE_I18N = True
 USE_TZ = True
 
 # --- Static files (CSS, JavaScript, Images) ---
+STATIC_URL = '/static/' # Было пропущено, добавил обратно
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATIC_URL = 'static/'
-
-# STATICFILES_DIRS: Где Django ищет статику во время разработки (твоя папка static)
-# Мы проверяем, существует ли папка, чтобы избежать warning'а
 if (BASE_DIR / 'static').exists():
     STATICFILES_DIRS = [
         BASE_DIR / 'static',
@@ -101,9 +129,8 @@ if (BASE_DIR / 'static').exists():
 else:
     STATICFILES_DIRS = []
 
-# STATIC_ROOT: Куда Django СОБЕРЕТ всю статику командой collectstatic (для сервера)
-# Этой настройки не хватало
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
