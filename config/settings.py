@@ -47,7 +47,7 @@ SUMMERNOTE_CONFIG = {
     },
     'css': (
         '//cdnjs.cloudflare.com/ajax/libs/codemirror/5.40.0/theme/monokai.min.css',
-        '/static/css/summernote-dark.css',
+        '/statics/css/summernote-dark.css',
     ),
     'codemirror': {
         'theme': 'monokai',

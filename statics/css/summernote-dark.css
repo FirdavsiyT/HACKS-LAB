@@ -1,25 +1,52 @@
 /* --- Темная тема для содержимого редактора --- */
 body {
-    background-color: #13141b !important; /* Цвет фона вашего приложения */
-    color: #e2e8f0 !important;            /* Цвет текста */
+    background-color: #13141b !important;
+    color: #e2e8f0 !important;
     font-family: 'Inter', sans-serif;
     padding: 15px;
 }
 
-/* --- Стиль для блоков кода (как в Telegram) --- */
+/* --- Усиленные стили для блоков кода (как в Telegram/Discord) --- */
+
+/* Стили для самого блока <pre> */
 pre {
-    background-color: #2c2f3b;      /* Темно-серый фон блока */
-    color: #9fef00;                 /* Хакерский зеленый цвет текста (или #e2e8f0 для белого) */
-    padding: 12px;
-    border-radius: 8px;             /* Скругленные углы */
-    border: 1px solid #3f4454;      /* Тонкая рамка */
-    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-    font-size: 0.9em;
-    white-space: pre-wrap;          /* Перенос длинных строк */
-    margin: 10px 0;
+    display: block !important;
+    background-color: #2c2f3b !important;   /* Темно-серый фон */
+    color: #9fef00 !important;              /* Ярко-зеленый текст */
+    padding: 12px 16px !important;          /* Отступы внутри блока */
+    border-radius: 8px !important;          /* Скругление */
+    border: 1px solid #3f4454 !important;   /* Рамка */
+
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+
+    white-space: pre-wrap !important;       /* Перенос слов */
+    word-wrap: break-word !important;
+    margin-bottom: 1rem !important;
 }
 
-/* --- Стилизация скроллбара внутри редактора --- */
+/* Если внутри pre есть тег code, убираем у него лишние стили */
+pre code {
+    background-color: transparent !important;
+    color: inherit !important;
+    padding: 0 !important;
+    border: none !important;
+    font-size: inherit !important;
+    box-shadow: none !important;
+}
+
+/* Стили для ссылок */
+a {
+    color: #9fef00 !important;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+a:hover {
+    color: #fff !important;
+}
+
+/* Скроллбар */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
